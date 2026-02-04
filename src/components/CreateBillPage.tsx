@@ -27,6 +27,7 @@ export function CreateBillPage() {
   const [accountNumber, setAccountNumber] = useState("");
   const [reasonForPayment, setReasonForPayment] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -119,10 +120,33 @@ export function CreateBillPage() {
     }, 0);
   };
 
+  const addFiles = (files: FileList | File[]) => {
+    const nextFiles = Array.from(files);
+    if (nextFiles.length === 0) return;
+    setAttachments((prev) => [...prev, ...nextFiles]);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAttachments([...attachments, ...Array.from(e.target.files)]);
-    }
+    if (!e.target.files) return;
+    addFiles(e.target.files);
+    e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragActive(false);
+    if (!e.dataTransfer.files) return;
+    addFiles(e.dataTransfer.files);
   };
 
   const removeAttachment = (index: number) => {
@@ -504,7 +528,16 @@ export function CreateBillPage() {
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h2>
 
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragActive
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-300"
+                  }`}
+                >
                   <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
                   <div className="text-sm text-gray-600 mb-2">
                     <label htmlFor="file-upload" className="text-blue-600 hover:text-blue-700 cursor-pointer font-medium">
