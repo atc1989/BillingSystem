@@ -9,6 +9,7 @@ import { CreateBillPage } from './components/CreateBillPage';
 import { ViewBillPage } from './components/ViewBillPage';
 import { EditBillPage } from './components/EditBillPage';
 import { EventFormsHome } from './components/EventFormsHome';
+import { SpecialCompanyEventsForm } from './components/SpecialCompanyEventsForm';
 
 export default function App() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/bills/:id" element={<ViewBillPage />} />
         <Route path="/bills/:id/edit" element={<EditBillPage />} />
         <Route path="/event-forms" element={<EventFormsHome />} />
+        <Route path="/forms/special-company-events" element={<SpecialCompanyEventsForm />} />
         </Route>
       </Route>
 

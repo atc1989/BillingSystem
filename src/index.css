@@ -1771,3 +1771,152 @@ html {
 .event-form-card:hover .event-form-icon {
   transform: scale(1.05);
 }
+
+.form-paper {
+  max-width: 820px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 24px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  font-size: 13px;
+  color: #111827;
+}
+
+.form-title {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.form-title__line {
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.form-title__primary {
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.form-title__secondary {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form-field {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.form-field span {
+  font-size: 12px;
+}
+
+.form-field input {
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  padding: 2px 4px;
+  font-size: 12px;
+  outline: none;
+}
+
+.form-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #111;
+  margin-bottom: 16px;
+}
+
+.form-table th,
+.form-table td {
+  border: 1px solid #111;
+  padding: 6px 8px;
+  vertical-align: top;
+  font-size: 12px;
+}
+
+.form-table th {
+  font-weight: 700;
+  text-align: left;
+}
+
+.form-table th:first-child,
+.form-table td:first-child {
+  width: 70%;
+}
+
+.form-table th:last-child,
+.form-table td:last-child {
+  width: 30%;
+}
+
+.form-step {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.form-step input[type="checkbox"] {
+  margin-top: 2px;
+  width: 12px;
+  height: 12px;
+}
+
+.form-inline-input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  padding: 2px 4px;
+  font-size: 12px;
+  outline: none;
+}
+
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.form-footer__label {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.form-footer__line {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  min-width: 180px;
+  font-size: 12px;
+  padding-bottom: 2px;
+}
+
+@media print {
+  .form-toolbar {
+    display: none;
+  }
+
+  .form-paper {
+    box-shadow: none;
+    border: 1px solid #111;
+    padding: 16px;
+  }
+
+  .form-table,
+  .form-table th,
+  .form-table td {
+    border-color: #111;
+  }
+
+  body {
+    background: #fff;
+  }
+}
