@@ -37,24 +37,18 @@ const formCards: FormCardItem[] = [
   },
 ];
 
-const toneStyles: Record<FormTone, { icon: string; iconBg: string; border: string; ring: string }> = {
+const toneStyles: Record<FormTone, { icon: string; iconBg: string }> = {
   blue: {
     icon: "text-blue-600",
     iconBg: "bg-blue-100/80",
-    border: "border-blue-500",
-    ring: "focus-visible:ring-blue-400/40",
   },
   green: {
     icon: "text-green-600",
     iconBg: "bg-green-100/80",
-    border: "border-green-500",
-    ring: "focus-visible:ring-green-400/40",
   },
   purple: {
     icon: "text-purple-600",
     iconBg: "bg-purple-100/80",
-    border: "border-purple-500",
-    ring: "focus-visible:ring-purple-400/40",
   },
 };
 
@@ -69,23 +63,23 @@ function FormCard({ title, subtitle, to, icon: Icon, tone, isActive }: FormCardP
     <Link
       to={to}
       className={cn(
-        "group bg-white border-2 rounded-2xl px-6 py-10 text-center shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2",
-        styles.border,
-        styles.ring,
-        isActive ? "shadow-md" : "shadow-sm",
+        "group min-h-[200px] bg-white border border-black/10 rounded-2xl px-8 py-10 text-center shadow-[0_6px_18px_rgba(0,0,0,0.08)] transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(0,0,0,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400/60",
+        isActive
+          ? "ring-2 ring-green-400/70 shadow-[0_0_0_2px_rgba(34,197,94,0.6),0_6px_18px_rgba(0,0,0,0.08)]"
+          : "",
       )}
       aria-current={isActive ? "page" : undefined}
     >
       <div
         className={cn(
-          "mx-auto flex h-14 w-14 items-center justify-center rounded-full",
+          "mx-auto flex h-12 w-12 items-center justify-center rounded-full",
           styles.iconBg,
         )}
       >
-        <Icon className={cn("h-7 w-7", styles.icon)} />
+        <Icon className={cn("h-6 w-6", styles.icon)} />
       </div>
-      <div className="mt-5 text-lg font-semibold text-gray-900">{title}</div>
-      <div className="mt-2 text-sm text-gray-600">{subtitle}</div>
+      <div className="mt-4 text-[17px] font-semibold text-gray-900">{title}</div>
+      <div className="mt-2 text-[13px] text-black/60">{subtitle}</div>
     </Link>
   );
 }
