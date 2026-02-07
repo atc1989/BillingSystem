@@ -31,7 +31,15 @@ const hasRowContent = (row: ProspectRow) =>
   row.date2.trim() ||
   row.remarks.trim();
 
-export function ProspectInvitationForm() {
+type ProspectInvitationFormProps = {
+  showBackButton?: boolean;
+  embedded?: boolean;
+};
+
+export function ProspectInvitationForm({
+  showBackButton = true,
+  embedded = false,
+}: ProspectInvitationFormProps) {
   const navigate = useNavigate();
   const [rows, setRows] = useState<ProspectRow[]>(createInitialRows);
 
@@ -88,19 +96,23 @@ export function ProspectInvitationForm() {
   };
 
   return (
-    <div className="prospect-page min-h-screen bg-gray-50">
-      <div className="pt-16">
-        <div className="max-w-[1440px] mx-auto px-6 py-8">
+    <div className={embedded ? "prospect-page" : "prospect-page min-h-screen bg-gray-50"}>
+      <div className={embedded ? "" : "pt-16"}>
+        <div className={embedded ? "" : "max-w-[1440px] mx-auto px-6 py-8"}>
           <div className="form-toolbar">
-            <div className="form-toolbar__left">
-              <button
-                onClick={() => navigate("/event-forms")}
-                className="toolbar-btn toolbar-btn--back"
-              >
-                <ArrowLeft className="form-btn__icon" />
-                Back to Forms
-              </button>
-            </div>
+            {showBackButton ? (
+              <div className="form-toolbar__left">
+                <button
+                  onClick={() => navigate("/event-forms")}
+                  className="toolbar-btn toolbar-btn--back"
+                >
+                  <ArrowLeft className="form-btn__icon" />
+                  Back to Forms
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
             <div className="form-toolbar__right">
               <button onClick={handleSave} className="toolbar-btn">
                 <Save className="form-btn__icon" />

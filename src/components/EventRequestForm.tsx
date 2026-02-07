@@ -79,7 +79,12 @@ const initialState: EventRequestFormState = {
   testimony2: "",
 };
 
-export function EventRequestForm() {
+type EventRequestFormProps = {
+  showBackButton?: boolean;
+  embedded?: boolean;
+};
+
+export function EventRequestForm({ showBackButton = true, embedded = false }: EventRequestFormProps) {
   const navigate = useNavigate();
   const [formState, setFormState] = useState<EventRequestFormState>(initialState);
 
@@ -119,16 +124,20 @@ export function EventRequestForm() {
   };
 
   return (
-    <div className="event-request-page min-h-screen bg-gray-50">
-      <div className="pt-16">
-        <div className="max-w-[1440px] mx-auto px-6 py-8">
+    <div className={embedded ? "event-request-page" : "event-request-page min-h-screen bg-gray-50"}>
+      <div className={embedded ? "" : "pt-16"}>
+        <div className={embedded ? "" : "max-w-[1440px] mx-auto px-6 py-8"}>
           <div className="form-toolbar">
-            <div className="form-toolbar__left">
-              <button onClick={() => navigate("/event-forms")} className="toolbar-btn toolbar-btn--back">
-                <ArrowLeft className="form-btn__icon" />
-                Back to Forms
-              </button>
-            </div>
+            {showBackButton ? (
+              <div className="form-toolbar__left">
+                <button onClick={() => navigate("/event-forms")} className="toolbar-btn toolbar-btn--back">
+                  <ArrowLeft className="form-btn__icon" />
+                  Back to Forms
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
             <div className="form-toolbar__right">
               <button onClick={handleSave} className="toolbar-btn">
                 <Save className="form-btn__icon" />

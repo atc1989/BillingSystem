@@ -81,7 +81,15 @@ const initialState: FormState = {
   checks: createInitialChecks(),
 };
 
-export function SpecialCompanyEventsForm() {
+type SpecialCompanyEventsFormProps = {
+  showBackButton?: boolean;
+  embedded?: boolean;
+};
+
+export function SpecialCompanyEventsForm({
+  showBackButton = true,
+  embedded = false,
+}: SpecialCompanyEventsFormProps) {
   const navigate = useNavigate();
   const [formState, setFormState] = useState<FormState>(initialState);
 
@@ -128,19 +136,23 @@ export function SpecialCompanyEventsForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="pt-16">
-        <div className="max-w-[1440px] mx-auto px-6 py-8">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50"}>
+      <div className={embedded ? "" : "pt-16"}>
+        <div className={embedded ? "" : "max-w-[1440px] mx-auto px-6 py-8"}>
           <div className="form-toolbar">
-            <div className="form-toolbar__left">
-              <button
-                onClick={() => navigate("/event-forms")}
-                className="toolbar-btn toolbar-btn--back"
-              >
-                <ArrowLeft className="form-btn__icon" />
-                Back to Forms
-              </button>
-            </div>
+            {showBackButton ? (
+              <div className="form-toolbar__left">
+                <button
+                  onClick={() => navigate("/event-forms")}
+                  className="toolbar-btn toolbar-btn--back"
+                >
+                  <ArrowLeft className="form-btn__icon" />
+                  Back to Forms
+                </button>
+              </div>
+            ) : (
+              <div />
+            )}
             <div className="form-toolbar__right">
               <button onClick={handleLoad} className="toolbar-btn">
                 <Download className="form-btn__icon" />

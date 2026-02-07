@@ -1,89 +1,58 @@
-import React from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ClipboardCheck, FileText, Users, type LucideIcon } from "lucide-react";
-import { cn } from "./ui/utils";
+import React, { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { EventRequestForm } from "./EventRequestForm";
+import { ProspectInvitationForm } from "./ProspectInvitationForm";
+import { SpecialCompanyEventsForm } from "./SpecialCompanyEventsForm";
 
-type FormTone = "blue" | "green" | "purple";
+type EventFormTab = "special" | "request" | "prospect";
 
-type FormCardItem = {
-  title: string;
-  subtitle: string;
-  to: string;
-  icon: LucideIcon;
-  tone: FormTone;
+type TabItem = {
+  key: EventFormTab;
+  label: string;
 };
 
-const formCards: FormCardItem[] = [
-  {
-    title: "Special Company Events",
-    subtitle: "Flow Checklist (with speaker)",
-    to: "/forms/special-company-events",
-    icon: ClipboardCheck,
-    tone: "blue",
-  },
-  {
-    title: "Event Request",
-    subtitle: "Complete event request form",
-    to: "/forms/event-request",
-    icon: FileText,
-    tone: "green",
-  },
-  {
-    title: "Prospect Invitation",
-    subtitle: "Track guest invitations",
-    to: "/forms/prospect-invitation",
-    icon: Users,
-    tone: "purple",
-  },
+const activeTabStorageKey = "eventForms.activeTab";
+
+const tabs: TabItem[] = [
+  { key: "special", label: "Special Company Events" },
+  { key: "request", label: "Event Request" },
+  { key: "prospect", label: "Prospect Invitation" },
 ];
 
-const toneStyles: Record<FormTone, { icon: string; iconBg: string }> = {
-  blue: {
-    icon: "text-blue-600",
-    iconBg: "bg-blue-100/80",
-  },
-  green: {
-    icon: "text-green-600",
-    iconBg: "bg-green-100/80",
-  },
-  purple: {
-    icon: "text-purple-600",
-    iconBg: "bg-purple-100/80",
-  },
+const isEventFormTab = (value: string | null): value is EventFormTab =>
+  value === "special" || value === "request" || value === "prospect";
+
+const getInitialTab = (queryTab: string | null): EventFormTab => {
+  if (isEventFormTab(queryTab)) return queryTab;
+
+  const saved = localStorage.getItem(activeTabStorageKey);
+  if (isEventFormTab(saved)) return saved;
+
+  return "request";
 };
-
-type FormCardProps = FormCardItem & {
-  isActive: boolean;
-};
-
-function FormCard({ title, subtitle, to, icon: Icon, tone, isActive }: FormCardProps) {
-  const styles = toneStyles[tone];
-
-  return (
-    <Link
-      to={to}
-      className={cn(
-        "group event-form-card",
-        isActive ? "event-form-card--active" : "",
-      )}
-      aria-current={isActive ? "page" : undefined}
-    >
-      <div
-        className={cn(
-          "event-form-icon mx-auto flex h-12 w-12 items-center justify-center rounded-full",
-          styles.iconBg,
-        )}
-      >
-        <Icon className={cn("h-6 w-6", styles.icon)} />
-      </div>
-      <div className="mt-4 text-[17px] font-semibold text-gray-900">{title}</div>
-      <div className="mt-2 text-[13px] text-black/60">{subtitle}</div>
-    </Link>
-  );
-}
 
 export function EventFormsHome() {
-  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<EventFormTab>(() => getInitialTab(searchParams.get("tab")));
+
+  const activeContent = useMemo(
+    () => ({
+      special: <SpecialCompanyEventsForm embedded showBackButton={false} />,
+      request: <EventRequestForm embedded showBackButton={false} />,
+      prospect: <ProspectInvitationForm embedded showBackButton={false} />,
+    }),
+    [],
+  );
+
+  const setTab = (tab: EventFormTab) => {
+    setActiveTab(tab);
+    localStorage.setItem(activeTabStorageKey, tab);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set("tab", tab);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -91,19 +60,30 @@ export function EventFormsHome() {
         <div className="max-w-[1440px] mx-auto px-6 py-8">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-gray-900">Event Forms</h1>
-            <p className="text-gray-600 mt-1">
-              Choose a form to get started with your event requests.
-            </p>
+            <p className="text-gray-600 mt-1">Choose a form to get started with your event requests.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {formCards.map((card) => (
-              <FormCard
-                key={card.title}
-                {...card}
-                isActive={location.pathname.startsWith(card.to)}
-              />
+          <div className="flex items-center gap-1 border-b border-gray-200 mb-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setTab(tab.key)}
+                className={`px-4 py-3 font-medium transition-colors relative ${
+                  activeTab === tab.key ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {tab.label}
+                {activeTab === tab.key && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                )}
+              </button>
             ))}
+          </div>
+
+          <div className="space-y-5">
+            <div className={activeTab === "special" ? "block" : "hidden"}>{activeContent.special}</div>
+            <div className={activeTab === "request" ? "block" : "hidden"}>{activeContent.request}</div>
+            <div className={activeTab === "prospect" ? "block" : "hidden"}>{activeContent.prospect}</div>
           </div>
         </div>
       </div>
