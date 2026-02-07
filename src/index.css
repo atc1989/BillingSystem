@@ -2034,6 +2034,20 @@ html {
   gap: 22px;
 }
 
+.twoColWrap {
+  position: relative;
+}
+
+.twoColWrap::after {
+  content: "";
+  position: absolute;
+  left: calc(62% + 11px);
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
 .event-request-col {
   min-width: 0;
 }
@@ -2197,6 +2211,10 @@ html {
   .event-request-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .twoColWrap::after {
+    content: none;
   }
 
   .event-request-row {

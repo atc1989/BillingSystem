@@ -205,7 +205,7 @@ export function EventRequestForm({
               </p>
             </header>
 
-            <div className="event-request-grid">
+            <div className="event-request-grid twoColWrap">
               <div className="event-request-col">
                 <section className="event-request-section">
                   <h2>1. CONTACT INFORMATION</h2>
