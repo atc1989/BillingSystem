@@ -46,12 +46,12 @@ type EventFormsTabsProps = {
 
 function EventFormsTabs({ activeTab, onChange }: EventFormsTabsProps) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap pb-2 -mx-1 px-1">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           onClick={() => onChange(tab.key)}
-          className={`px-4 py-3 font-medium transition-colors relative ${
+          className={`px-4 py-3 min-h-10 font-medium transition-colors relative whitespace-nowrap ${
             activeTab === tab.key ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
           }`}
         >
@@ -72,20 +72,20 @@ type EventFormsToolbarProps = {
 
 function EventFormsToolbar({ onSave, onLoad, onClear, onPrint }: EventFormsToolbarProps) {
   return (
-    <div className="flex items-center gap-2 pb-2 shrink-0">
-      <button onClick={onSave} className="toolbar-btn">
+    <div className="flex items-center justify-end gap-2 pb-2 w-full md:w-auto md:shrink-0 flex-wrap md:flex-nowrap">
+      <button onClick={onSave} className="toolbar-btn min-h-9">
         <Save className="form-btn__icon" />
         Save
       </button>
-      <button onClick={onLoad} className="toolbar-btn">
+      <button onClick={onLoad} className="toolbar-btn min-h-9">
         <Download className="form-btn__icon" />
         Load
       </button>
-      <button onClick={onClear} className="toolbar-btn">
+      <button onClick={onClear} className="toolbar-btn min-h-9">
         <Trash2 className="form-btn__icon" />
         Clear
       </button>
-      <button onClick={onPrint} className="toolbar-btn">
+      <button onClick={onPrint} className="toolbar-btn min-h-9">
         <Printer className="form-btn__icon" />
         Print
       </button>
@@ -121,7 +121,7 @@ export function EventFormsHome() {
             <p className="text-gray-600 mt-1">Choose a form to get started with your event requests.</p>
           </div>
 
-          <div className="flex items-end justify-between border-b border-gray-200 mb-6">
+          <div className="flex flex-col gap-2 md:gap-0 md:flex-row md:items-end md:justify-between border-b border-gray-200 mb-6">
             <EventFormsTabs activeTab={activeTab} onChange={setTab} />
             <EventFormsToolbar
               onSave={() => runActive("save")}
