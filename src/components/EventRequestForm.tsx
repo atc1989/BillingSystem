@@ -409,12 +409,12 @@ export function EventRequestForm({
                 </section>
               </div>
 
-              <div className="event-request-col">
+              <div className="event-request-col event-request-right-col">
                 <section className="event-request-section">
                   <h2>4. ADDITIONAL SERVICES (IF Applicable)</h2>
 
                   <div className="event-request-group">
-                    <div className="event-request-inline-line">
+                    <div className="event-request-inline-line fieldGroupGap">
                       <span>Catering Needed</span>
                       <label className="event-request-check">
                         <input
@@ -435,7 +435,7 @@ export function EventRequestForm({
                         <span>NO</span>
                       </label>
                     </div>
-                    <label className="event-request-row">
+                    <label className="event-request-row fieldRow">
                       <span>IF YES, specify</span>
                       <input
                         value={formState.cateringSpecify}
@@ -444,7 +444,7 @@ export function EventRequestForm({
                     </label>
                   </div>
 
-                  <div className="event-request-inline-line">
+                  <div className="event-request-inline-line fieldGroupGap">
                     <span>Security</span>
                     <label className="event-request-check">
                       <input
@@ -467,16 +467,16 @@ export function EventRequestForm({
                   </div>
                 </section>
 
-                <section className="event-request-section">
+                <section className="event-request-section rightColSection">
                   <h2>5. AUTHORIZATION &amp; SUBMISSION</h2>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Requested By</span>
                     <input
                       value={formState.requestedBy}
                       onChange={(e) => updateField("requestedBy", e.target.value)}
                     />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow fieldGroupGap">
                     <span>Date Of Request</span>
                     <input
                       placeholder="dd/mm/yyyy"
@@ -484,46 +484,46 @@ export function EventRequestForm({
                       onChange={(e) => updateField("dateOfRequest", e.target.value)}
                     />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Signature</span>
                     <input
                       value={formState.signature}
                       onChange={(e) => updateField("signature", e.target.value)}
                     />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Organizer</span>
                     <input
                       value={formState.organizer}
                       onChange={(e) => updateField("organizer", e.target.value)}
                     />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Prayer/Technical</span>
                     <input
                       value={formState.prayerTechnical}
                       onChange={(e) => updateField("prayerTechnical", e.target.value)}
                     />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Host</span>
                     <input value={formState.host} onChange={(e) => updateField("host", e.target.value)} />
                   </label>
-                  <label className="event-request-row">
+                  <label className="event-request-row fieldRow">
                     <span>Speaker</span>
                     <input value={formState.speaker} onChange={(e) => updateField("speaker", e.target.value)} />
                   </label>
 
-                  <div className="event-request-group">
+                  <div className="event-request-group testimonyBlock">
                     <div className="event-request-group-title">Testimony:</div>
-                    <label className="event-request-row">
+                    <label className="event-request-row fieldRow fieldRowTight">
                       <span>1.)</span>
                       <input
                         value={formState.testimony1}
                         onChange={(e) => updateField("testimony1", e.target.value)}
                       />
                     </label>
-                    <label className="event-request-row">
+                    <label className="event-request-row fieldRow fieldRowTight testimonyRow">
                       <span>2.)</span>
                       <input
                         value={formState.testimony2}

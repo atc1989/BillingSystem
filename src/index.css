@@ -2165,6 +2165,30 @@ html {
   margin-bottom: 2px;
 }
 
+.event-request-right-col .rightColSection {
+  margin-top: 16px;
+}
+
+.event-request-right-col .event-request-row.fieldRow {
+  margin-bottom: 10px;
+}
+
+.event-request-right-col .event-request-row.fieldRowTight {
+  margin-bottom: 6px;
+}
+
+.event-request-right-col .fieldGroupGap {
+  margin-bottom: 14px;
+}
+
+.event-request-right-col .testimonyBlock {
+  margin-top: 12px;
+}
+
+.event-request-right-col .testimonyRow {
+  margin-top: 8px;
+}
+
 @media (max-width: 880px) {
   .event-request-paper {
     padding: 18px;
