@@ -2,17 +2,19 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { VoidBillModal } from "./VoidBillModal";
 import { ChevronRight, AlertCircle, Plus, X, Upload } from "lucide-react";
-import { getBillById, updateBill } from "../services/bills.service";
+import { getBillById, updateBill, updateBillStatus, type ServiceError } from "../services/bills.service";
 import { createVendor, listVendors } from "../services/vendors.service";
+import { confirmDiscardChanges } from "../lib/alerts";
 import type { PaymentMethod, PriorityLevel, Vendor } from "../types/billing";
-
 interface PaymentBreakdown {
   id: string;
-  category: string;
+  payment_method: PaymentMethod;
   description: string;
   amount: string;
+  bank_name: string;
+  bank_account_name: string;
+  bank_account_no: string;
 }
-
 export function EditBillPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -21,26 +23,19 @@ export function EditBillPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [billStatus, setBillStatus] = useState<string | null>(null);
-
   const [vendorInput, setVendorInput] = useState("");
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [vendorOptions, setVendorOptions] = useState<Vendor[]>([]);
   const [isVendorLoading, setIsVendorLoading] = useState(false);
-
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [referenceError, setReferenceError] = useState<string | null>(null);
   const [requestDate, setRequestDate] = useState("");
   const [priority, setPriority] = useState("Standard");
-  const [paymentMethod, setPaymentMethod] = useState("Bank Transfer");
-  const [bankName, setBankName] = useState("");
-  const [accountHolder, setAccountHolder] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
   const [reasonForPayment, setReasonForPayment] = useState("");
   const [attachments, setAttachments] = useState<string[]>([]);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
-
   const [breakdowns, setBreakdowns] = useState<PaymentBreakdown[]>([]);
-
   const priorityMap: Record<string, PriorityLevel> = useMemo(
     () => ({
       Urgent: "urgent",
@@ -50,30 +45,21 @@ export function EditBillPage() {
     }),
     []
   );
-
-  const paymentMethodMap: Record<string, PaymentMethod> = useMemo(
-    () => ({
-      "Bank Transfer": "bank_transfer",
-      Check: "check",
-      Cash: "cash",
-      Other: "other"
-    }),
-    []
-  );
-
-  const categoryMap: Record<string, string> = useMemo(
-    () => ({
-      Savings: "savings",
-      "Loan Assistance": "loan_assistance",
-      "Car Amortization": "car_amortization",
-      "SMS Allowance": "sms_allowance",
-      "Gas Allowance": "gas_allowance",
-      Other: "other"
-    }),
-    []
-  );
+  const formatPaymentMethod = (method: PaymentMethod) => {
+    switch (method) {
+      case "bank_transfer":
+        return "Bank Transfer";
+      case "check":
+        return "Check";
+      case "cash":
+        return "Cash";
+      default:
+        return "Other";
+    }
+  };
   const canEdit = billStatus === "draft" || billStatus === "awaiting_approval";
-
+  const isDuplicatePrfError = (error: string | ServiceError | null | undefined) =>
+    typeof error === "object" && error?.code === "DUPLICATE_PRF";
   useEffect(() => {
     let isMounted = true;
     if (!id) {
@@ -81,7 +67,6 @@ export function EditBillPage() {
       setErrorMessage("Bill not found.");
       return;
     }
-
     setIsLoading(true);
     getBillById(id)
       .then((result) => {
@@ -90,7 +75,6 @@ export function EditBillPage() {
           setErrorMessage(result.error || "Bill not found.");
           return;
         }
-
         const { bill, vendor, breakdowns: lineItems } = result.data;
         setBillStatus(bill.status);
         setVendorInput(vendor.name);
@@ -106,26 +90,17 @@ export function EditBillPage() {
             ? "Low"
             : "Standard"
         );
-        setPaymentMethod(
-          bill.payment_method === "bank_transfer"
-            ? "Bank Transfer"
-            : bill.payment_method === "check"
-            ? "Check"
-            : bill.payment_method === "cash"
-            ? "Cash"
-            : "Other"
-        );
-        setBankName(bill.bank_name || "");
-        setAccountHolder(bill.bank_account_name || "");
-        setAccountNumber(bill.bank_account_no || "");
         setReasonForPayment(bill.remarks || "");
         setAttachments([]);
         setBreakdowns(
           lineItems.map((b, idx) => ({
             id: b.id || idx.toString(),
-            category: b.category,
+            payment_method: (b.payment_method ?? bill.payment_method ?? "other") as PaymentMethod,
             description: b.description || "",
-            amount: String(b.amount ?? "")
+            amount: String(b.amount ?? ""),
+            bank_name: b.bank_name || "",
+            bank_account_name: b.bank_account_name || "",
+            bank_account_no: b.bank_account_no || ""
           }))
         );
       })
@@ -137,19 +112,16 @@ export function EditBillPage() {
         if (!isMounted) return;
         setIsLoading(false);
       });
-
     return () => {
       isMounted = false;
     };
   }, [id]);
-
   useEffect(() => {
     let isMounted = true;
     if (!vendorInput.trim()) {
       setVendorOptions([]);
       return;
     }
-
     setIsVendorLoading(true);
     listVendors(vendorInput)
       .then((result) => {
@@ -164,12 +136,10 @@ export function EditBillPage() {
         if (!isMounted) return;
         setIsVendorLoading(false);
       });
-
     return () => {
       isMounted = false;
     };
   }, [vendorInput]);
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "draft":
@@ -186,7 +156,6 @@ export function EditBillPage() {
         return "bg-gray-100 text-gray-700";
     }
   };
-
   const formatStatus = (status: string | null) => {
     switch (status) {
       case "draft":
@@ -203,77 +172,116 @@ export function EditBillPage() {
         return "—";
     }
   };
-
   const addBreakdownLine = () => {
     setBreakdowns([
       ...breakdowns,
-      { id: Date.now().toString(), category: "Savings", description: "", amount: "" }
+      {
+        id: Date.now().toString(),
+        payment_method: "bank_transfer",
+        description: "",
+        amount: "",
+        bank_name: "",
+        bank_account_name: "",
+        bank_account_no: ""
+      }
     ]);
   };
-
   const removeBreakdownLine = (lineId: string) => {
     if (breakdowns.length > 1) {
       setBreakdowns(breakdowns.filter((b) => b.id !== lineId));
     }
   };
-
   const updateBreakdown = (lineId: string, field: keyof PaymentBreakdown, value: string) => {
-    setBreakdowns(breakdowns.map((b) => (b.id === lineId ? { ...b, [field]: value } : b)));
+    setBreakdowns(
+      breakdowns.map((b) => {
+        if (b.id !== lineId) return b;
+        if (field === "payment_method" && value !== "bank_transfer") {
+          return {
+            ...b,
+            payment_method: value as PaymentMethod,
+            bank_name: "",
+            bank_account_name: "",
+            bank_account_no: ""
+          };
+        }
+        return { ...b, [field]: value };
+      })
+    );
   };
-
   const calculateTotal = () => {
     return breakdowns.reduce((sum, b) => {
       const amount = parseFloat(b.amount) || 0;
       return sum + amount;
     }, 0);
   };
-
   const addFiles = (files: FileList | File[]) => {
     const nextFiles = Array.from(files);
     if (nextFiles.length === 0) return;
     setNewFiles((prev) => [...prev, ...nextFiles]);
   };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     addFiles(e.target.files);
     e.target.value = "";
   };
-
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragActive(true);
   };
-
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragActive(false);
   };
-
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragActive(false);
     if (!e.dataTransfer.files) return;
     addFiles(e.dataTransfer.files);
   };
-
   const removeAttachment = (index: number) => {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
-
   const removeNewFile = (index: number) => {
     setNewFiles(newFiles.filter((_, i) => i !== index));
   };
-
   const handleSaveChanges = async () => {
     if (!id) return;
     if (!canEdit) {
       setErrorMessage("This bill can no longer be edited.");
       return;
     }
+    setReferenceError(null);
+    if (!vendorInput.trim()) {
+      setErrorMessage("Vendor name is required.");
+      return;
+    }
+    if (!requestDate) {
+      setErrorMessage("Request date is required.");
+      return;
+    }
+    if (breakdowns.length === 0) {
+      setErrorMessage("At least one breakdown line is required.");
+      return;
+    }
+    const missingBankDetails = breakdowns.some(
+      (b) =>
+        b.payment_method === "bank_transfer" &&
+        (!b.bank_name.trim() || !b.bank_account_name.trim() || !b.bank_account_no.trim())
+    );
+    if (missingBankDetails) {
+      setErrorMessage("Bank name, account holder, and account number are required for Bank Transfer lines.");
+      return;
+    }
+    const hasInvalidAmount = breakdowns.some((b) => {
+      const parsed = parseFloat(b.amount);
+      return !Number.isFinite(parsed) || parsed <= 0;
+    });
+    if (hasInvalidAmount) {
+      setErrorMessage("All breakdown amounts must be greater than 0.");
+      return;
+    }
     setErrorMessage(null);
     setIsSaving(true);
-
     let vendorId = selectedVendor?.id;
     if (!vendorId) {
       const vendorResult = await createVendor(vendorInput.trim());
@@ -284,65 +292,69 @@ export function EditBillPage() {
       }
       vendorId = vendorResult.data.id;
     }
-
     const totalAmount = calculateTotal();
-
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      setIsSaving(false);
+      setErrorMessage("Total amount must be greater than 0.");
+      return;
+    }
+    const primaryPaymentMethod = breakdowns[0]?.payment_method ?? "other";
     const payload = {
       bill: {
         vendor_id: vendorId,
         reference_no: referenceNumber,
         request_date: requestDate,
         priority_level: priorityMap[priority] || "standard",
-        payment_method: paymentMethodMap[paymentMethod] || "bank_transfer",
-        bank_name: bankName || null,
-        bank_account_name: accountHolder || null,
-        bank_account_no: accountNumber || null,
+        payment_method: primaryPaymentMethod,
+        bank_name: null,
+        bank_account_name: null,
+        bank_account_no: null,
         remarks: reasonForPayment || null,
         total_amount: totalAmount
       },
       breakdowns: breakdowns.map((b) => ({
-        category: categoryMap[b.category] || "other",
+        payment_method: b.payment_method,
         description: b.description ? b.description : "",
-        amount: parseFloat(b.amount) || 0
+        amount: parseFloat(b.amount) || 0,
+        bank_name: b.payment_method === "bank_transfer" ? b.bank_name || null : null,
+        bank_account_name: b.payment_method === "bank_transfer" ? b.bank_account_name || null : null,
+        bank_account_no: b.payment_method === "bank_transfer" ? b.bank_account_no || null : null
       }))
     };
-
     const result = await updateBill(id, payload);
     setIsSaving(false);
-
     if (result.error) {
-      setErrorMessage(result.error || "Failed to update bill.");
+      if (isDuplicatePrfError(result.error)) {
+        setReferenceError(
+          "Warning: PRF already existing. Please choose another PRF or leave blank to auto-generate."
+        );
+        return;
+      }
+      const message = typeof result.error === "string" ? result.error : result.error?.message;
+      setErrorMessage(message || "Failed to update bill.");
       return;
     }
-
     navigate(`/bills/${id}`);
   };
-
-  const handleCancel = () => {
-    if (confirm("Are you sure you want to cancel? All unsaved changes will be lost.")) {
+  const handleCancel = async () => {
+    const shouldDiscard = await confirmDiscardChanges();
+    if (shouldDiscard) {
       navigate("/bills");
     }
   };
-
-  const handleConfirmVoid = () => {
+  const handleConfirmVoid = async () => {
     if (!id) return;
-    console.log("Voiding bill...", {
-      vendorInput,
-      requestDate,
-      priority,
-      paymentMethod,
-      bankName,
-      accountHolder,
-      accountNumber,
-      breakdowns,
-      reasonForPayment,
-      attachments,
-      newFiles
-    });
+    setErrorMessage(null);
+    setIsSaving(true);
+    const result = await updateBillStatus(id, "void");
+    setIsSaving(false);
+    if (result.error) {
+      setErrorMessage(result.error);
+      return;
+    }
     setIsVoidModalOpen(false);
     navigate("/bills");
   };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 pt-16">
@@ -354,7 +366,6 @@ export function EditBillPage() {
       </div>
     );
   }
-
   if (errorMessage && !billStatus) {
     return (
       <div className="min-h-screen bg-gray-50 pt-16">
@@ -370,7 +381,6 @@ export function EditBillPage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="pt-16">
@@ -380,19 +390,16 @@ export function EditBillPage() {
             <AlertCircle className="w-5 h-5 text-blue-600" />
             <span className="text-sm font-medium text-blue-900">Editing Payment Request</span>
           </div>
-
           {!canEdit && (
             <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
               This bill is {formatStatus(billStatus)} and can no longer be edited.
             </div>
           )}
-
           {errorMessage && (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {errorMessage}
             </div>
           )}
-
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
             <button onClick={() => navigate("/bills")} className="hover:text-blue-600">
@@ -401,7 +408,6 @@ export function EditBillPage() {
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900">Payment Request Details</span>
           </div>
-
           {/* Page Header */}
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -417,7 +423,6 @@ export function EditBillPage() {
               </div>
               <p className="text-lg text-gray-600">{referenceNumber}</p>
             </div>
-
             {/* Action Buttons */}
             <div className="flex items-center gap-3">
               <button
@@ -435,7 +440,6 @@ export function EditBillPage() {
               </button>
             </div>
           </div>
-
           <form onSubmit={(e) => { e.preventDefault(); handleSaveChanges(); }}>
             <fieldset disabled={!canEdit || isSaving} className="space-y-6">
               {/* SECTION 1 — Payee & Reference */}
@@ -480,17 +484,39 @@ export function EditBillPage() {
                       </div>
                     )}
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-1.5">
+                    <label htmlFor="reference" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Reference Number
                     </label>
-                    <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-600">
-                      {referenceNumber}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Reference number cannot be edited</p>
+                    {canEdit ? (
+                      <>
+                        <input
+                          type="text"
+                          id="reference"
+                          value={referenceNumber}
+                          onChange={(e) => {
+                            setReferenceNumber(e.target.value);
+                            setReferenceError(null);
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Optional"
+                        />
+                        {referenceError ? (
+                          <p className="text-xs text-red-600 mt-1">{referenceError}</p>
+                        ) : (
+                          <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate.</p>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">Format hint: MMDDYY-###</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-gray-600">
+                          {referenceNumber}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Reference number cannot be edited</p>
+                      </>
+                    )}
                   </div>
-
                   <div>
                     <label htmlFor="requestDate" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Request Date <span className="text-red-600">*</span>
@@ -504,7 +530,6 @@ export function EditBillPage() {
                       required
                     />
                   </div>
-
                   <div>
                     <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1.5">
                       Priority Level
@@ -523,86 +548,15 @@ export function EditBillPage() {
                   </div>
                 </div>
               </div>
-
-              {/* SECTION 2 — Payment Method */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h2>
-
-                <div className="space-y-3 mb-4">
-                  {["Bank Transfer", "Check", "Cash", "Other"].map((method) => (
-                    <label key={method} className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="paymentMethod"
-                        value={method}
-                        checked={paymentMethod === method}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-gray-900">{method}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {paymentMethod === "Bank Transfer" && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="bankName" className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Bank Name
-                        </label>
-                        <input
-                          type="text"
-                          id="bankName"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="e.g., BDO, BPI, Metrobank"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="accountHolder" className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Account Holder Name
-                        </label>
-                        <input
-                          type="text"
-                          id="accountHolder"
-                          value={accountHolder}
-                          onChange={(e) => setAccountHolder(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Full name as registered"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 mb-1.5">
-                          Bank Account Number
-                        </label>
-                        <input
-                          type="text"
-                          id="accountNumber"
-                          value={accountNumber}
-                          onChange={(e) => setAccountNumber(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Account number"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 3 — Payment Breakdown */}
+              {/* SECTION 2 -- Payment Breakdown */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Breakdown</h2>
-
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                          Category
+                          Payment Method
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Description
@@ -615,56 +569,110 @@ export function EditBillPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {breakdowns.map((breakdown) => (
-                        <tr key={breakdown.id}>
-                          <td className="px-4 py-3">
-                            <select
-                              value={breakdown.category}
-                              onChange={(e) => updateBreakdown(breakdown.id, "category", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            >
-                              <option value="Savings">Savings</option>
-                              <option value="Loan Assistance">Loan Assistance</option>
-                              <option value="Car Amortization">Car Amortization</option>
-                              <option value="SMS Allowance">SMS Allowance</option>
-                              <option value="Gas Allowance">Gas Allowance</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="text"
-                              value={breakdown.description}
-                              onChange={(e) => updateBreakdown(breakdown.id, "description", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                              placeholder="Brief description"
-                            />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={breakdown.amount}
-                              onChange={(e) => updateBreakdown(breakdown.id, "amount", e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right"
-                              placeholder="0.00"
-                            />
-                          </td>
-                          <td className="px-4 py-3">
-                            <button
-                              type="button"
-                              onClick={() => removeBreakdownLine(breakdown.id)}
-                              disabled={breakdowns.length === 1}
-                              className="text-red-600 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
+                        <React.Fragment key={breakdown.id}>
+                          <tr>
+                            <td className="px-4 py-3">
+                              <select
+                                value={breakdown.payment_method}
+                                onChange={(e) =>
+                                  updateBreakdown(breakdown.id, "payment_method", e.target.value)
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                              >
+                                {(["bank_transfer", "check", "cash", "other"] as PaymentMethod[]).map((method) => (
+                                  <option key={method} value={method}>
+                                    {formatPaymentMethod(method)}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={breakdown.description}
+                                onChange={(e) => updateBreakdown(breakdown.id, "description", e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                placeholder="Brief description"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={breakdown.amount}
+                                onChange={(e) => updateBreakdown(breakdown.id, "amount", e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right"
+                                placeholder="0.00"
+                              />
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => removeBreakdownLine(breakdown.id)}
+                                disabled={breakdowns.length === 1}
+                                className="text-red-600 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </td>
+                          </tr>
+                          {breakdown.payment_method === "bank_transfer" && (
+                            <tr>
+                              <td colSpan={4} className="px-4 pb-4">
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Bank Name
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={breakdown.bank_name}
+                                        onChange={(e) =>
+                                          updateBreakdown(breakdown.id, "bank_name", e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="e.g., BDO, BPI, Metrobank"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Account Holder Name
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={breakdown.bank_account_name}
+                                        onChange={(e) =>
+                                          updateBreakdown(breakdown.id, "bank_account_name", e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Full name as registered"
+                                      />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Bank Account Number
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={breakdown.bank_account_no}
+                                        onChange={(e) =>
+                                          updateBreakdown(breakdown.id, "bank_account_no", e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Account number"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
                 </div>
-
                 <button
                   type="button"
                   onClick={addBreakdownLine}
@@ -673,7 +681,6 @@ export function EditBillPage() {
                   <Plus className="w-4 h-4" />
                   Add Breakdown Line
                 </button>
-
                 {/* Total Amount */}
                 <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end">
                   <div className="text-right">
@@ -687,8 +694,7 @@ export function EditBillPage() {
                   </div>
                 </div>
               </div>
-
-              {/* SECTION 4 — Reason for Payment */}
+              {/* SECTION 3 -- Reason for Payment */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Reason for Payment</h2>
                 <div>
@@ -706,11 +712,9 @@ export function EditBillPage() {
                   <p className="text-sm text-gray-500 mt-1.5">Brief explanation or supporting details</p>
                 </div>
               </div>
-
-              {/* SECTION 5 — Attachments */}
+              {/* SECTION 4 -- Attachments */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h2>
-
                 {/* Existing Attachments */}
                 {attachments.length > 0 && (
                   <div className="mb-4">
@@ -734,7 +738,6 @@ export function EditBillPage() {
                     </div>
                   </div>
                 )}
-
                 {/* New File Upload */}
                 <div
                   onDragOver={handleDragOver}
@@ -763,7 +766,6 @@ export function EditBillPage() {
                     className="hidden"
                   />
                 </div>
-
                 {newFiles.length > 0 && (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-gray-700 mb-2">New Attachments</p>
@@ -783,11 +785,9 @@ export function EditBillPage() {
                     </div>
                   </div>
                 )}
-
                 <p className="text-sm text-gray-500 mt-3">Attach scanned forms or proof</p>
               </div>
-
-              {/* SECTION 6 — Request & Approval Info (Read-only) */}
+              {/* SECTION 5 -- Request & Approval Info (Read-only) */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Request & Approval Info</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -821,7 +821,6 @@ export function EditBillPage() {
                 </p>
               </div>
             </fieldset>
-
             {/* Footer Actions */}
             <div className="mt-8 flex items-center justify-end gap-3 pb-8">
               <button
@@ -842,7 +841,6 @@ export function EditBillPage() {
           </form>
         </div>
       </div>
-
       {/* Void Bill Modal */}
       <VoidBillModal
         isOpen={isVoidModalOpen}

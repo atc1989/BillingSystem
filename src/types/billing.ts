@@ -36,9 +36,12 @@ export interface Bill {
 export interface BillBreakdown {
   id?: string;
   bill_id: string;
-  category: string;
+  payment_method: PaymentMethod;
   description?: string | null;
   amount: number;
+  bank_name?: string | null;
+  bank_account_name?: string | null;
+  bank_account_no?: string | null;
 }
 
 export interface BillDetails {
