@@ -2,6 +2,10 @@
   width: 100%;
 }
 
+.sce-shell {
+  width: 100%;
+}
+
 .screen-form {
   display: block;
 }
@@ -11,21 +15,28 @@
 }
 
 .sce-screen-head {
-  margin-bottom: 12px;
+  text-align: center;
+  margin-bottom: 16px;
 }
 
-.sce-screen-head h1 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
+.sce-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: #111827;
 }
 
-.sce-top-grid {
+.sce-title-sub {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-top: 2px;
+}
+
+.sce-top-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .sce-field {
@@ -41,7 +52,7 @@
 }
 
 .sce-field input,
-.sce-inline-input {
+.sce-assigned-input {
   width: 100%;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -53,78 +64,71 @@
   outline: 0;
 }
 
-.sce-field-full {
-  grid-column: 1 / -1;
+.sce-checklist {
+  display: grid;
+  gap: 6px;
 }
 
-.sce-table-wrap {
-  overflow-x: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #ffffff;
-}
-
-.sce-table {
-  width: 100%;
-  min-width: 720px;
-  border-collapse: collapse;
-}
-
-.sce-table th,
-.sce-table td {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 8px 10px;
-  text-align: left;
-  vertical-align: middle;
-  font-size: 13px;
-  color: #1f2937;
-}
-
-.sce-table thead th {
-  background: #f8fafc;
+.sce-checklist-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  font-size: 12.5px;
   font-weight: 700;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 6px;
+}
+
+.sce-checklist-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .sce-step {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
+  font-size: 13px;
+  color: #111827;
 }
 
 .sce-step input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  margin: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
   flex: 0 0 auto;
 }
 
-.sce-foot-grid {
+.sce-footer-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
+  gap: 16px;
+  margin-top: 16px;
 }
 
-.sce-print-paper {
+.sce-footer-block {
+  display: grid;
+  gap: 10px;
+}
+
+.sce-print {
   width: 100%;
-  border: 1px solid #111827;
-  padding: 8px;
-  background: #ffffff;
 }
 
 .sce-print-title {
   text-align: center;
-  border-top: 1px solid #111827;
-  border-bottom: 1px solid #111827;
-  padding: 4px 0;
   margin-bottom: 6px;
   font-size: 12px;
-  line-height: 1.15;
+  line-height: 1.2;
   font-weight: 700;
 }
 
-.sce-print-top {
-  margin-bottom: 6px;
+.sce-print-fields {
+  margin-bottom: 8px;
 }
 
 .sce-print-line {
@@ -153,7 +157,7 @@
 .sce-print-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .sce-print-table th,
@@ -162,29 +166,50 @@
   padding: 3px 4px;
   text-align: left;
   vertical-align: top;
-  font-size: 10.8px;
+  font-size: 10.5px;
   line-height: 1.2;
 }
 
 .sce-print-table th {
-  font-size: 11.2px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .sce-print-check {
-  display: inline-block;
-  min-width: 12px;
+  font-family: "Courier New", monospace;
+  margin-right: 4px;
 }
 
 .sce-print-footer {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  margin-top: 6px;
 }
 
-@media (max-width: 767px) {
-  .sce-top-grid,
-  .sce-foot-grid {
+.sce-print-sign {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border-bottom: 1px solid #111827;
+  min-height: 14px;
+  padding-bottom: 1px;
+}
+
+@media (max-width: 720px) {
+  .sce-checklist-header {
+    display: none;
+  }
+
+  .sce-checklist-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sce-assigned-input {
+    margin-left: 24px;
+  }
+
+  .sce-footer-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -199,17 +224,10 @@
     display: block !important;
   }
 
-  .print-root {
-    width: 100% !important;
-    max-width: none !important;
-    margin: 0 !important;
-  }
-
-  .sce-print-paper,
+  .sce-print,
   .sce-print-table,
   .sce-print-table tr,
-  .sce-print-footer,
-  .form-section {
+  .sce-print-footer {
     break-inside: avoid;
     page-break-inside: avoid;
   }
