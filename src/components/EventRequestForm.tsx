@@ -272,15 +272,33 @@ export function EventRequestForm({
         <div className={embedded ? "" : "max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8"}>
           {showBackButton ? (
             <div className="erf-header-actions no-print print-hide">
-              <button type="button" onClick={() => navigate("/event-forms")} className="erf-back-btn">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Forms
-              </button>
+              <div>
+                <button type="button" onClick={() => navigate("/event-forms")} className="erf-back-btn">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Forms
+                </button>
+              </div>
+              <div className="erf-header-actions__right">
+                <button type="button" className="erf-button erf-button-secondary" onClick={() => window.print()}>
+                  Print
+                </button>
+                <button type="button" className="erf-button erf-button-secondary" onClick={handleReset}>
+                  Reset
+                </button>
+                <button
+                  type="submit"
+                  form="event-request-form"
+                  className="erf-button erf-button-primary"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </button>
+              </div>
             </div>
           ) : null}
 
           <div className="print-root">
-            <form className="erf-paper mx-auto" onSubmit={handleSubmit}>
+            <form id="event-request-form" className="erf-paper mx-auto" onSubmit={handleSubmit}>
               <header className="erf-top">
                 <h1>EVENT REQUEST FORM</h1>
                 <p>
@@ -639,17 +657,6 @@ export function EventRequestForm({
                 </div>
               </div>
 
-              <div className="erf-actions no-print print-hide">
-                <button type="button" className="erf-button erf-button-secondary" onClick={() => window.print()}>
-                  Print
-                </button>
-                <button type="button" className="erf-button erf-button-secondary" onClick={handleReset}>
-                  Reset
-                </button>
-                <button type="submit" className="erf-button erf-button-primary" disabled={isSubmitting}>
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </button>
-              </div>
             </form>
           </div>
         </div>
