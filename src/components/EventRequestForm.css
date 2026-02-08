@@ -1,0 +1,296 @@
+.erf-page {
+  width: 100%;
+}
+
+.erf-page-standalone {
+  min-height: 100vh;
+  background: #f5f6f7;
+}
+
+.erf-header-actions {
+  margin-bottom: 14px;
+}
+
+.erf-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.erf-paper {
+  width: 100%;
+  max-width: 900px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 28px;
+}
+
+.erf-top {
+  text-align: center;
+  border-top: 1px solid #9ca3af;
+  border-bottom: 1px solid #9ca3af;
+  padding: 12px 0 10px;
+  margin-bottom: 18px;
+}
+
+.erf-top h1 {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.05;
+  letter-spacing: 1px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.erf-top p {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.15px;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.erf-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px;
+}
+
+.erf-column {
+  min-width: 0;
+}
+
+.erf-section {
+  margin-bottom: 18px;
+}
+
+.erf-section h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.erf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 11px;
+}
+
+.erf-label {
+  font-size: 14px;
+  line-height: 1.3;
+  color: #374151;
+  font-weight: 500;
+}
+
+.erf-required {
+  margin-left: 4px;
+  color: #b91c1c;
+}
+
+.erf-lined-input,
+.erf-lined-textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #6b7280;
+  border-radius: 0;
+  background: transparent;
+  color: #111827;
+  padding: 4px 2px 6px;
+  font-size: 14px;
+  line-height: 1.35;
+  outline: 0;
+}
+
+.erf-lined-textarea {
+  min-height: 76px;
+  max-height: 180px;
+  resize: none;
+}
+
+.erf-lined-input:focus,
+.erf-lined-textarea:focus {
+  border-bottom-color: #374151;
+}
+
+.erf-inline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.erf-choice-group {
+  border: 0;
+  margin: 0 0 10px;
+  padding: 0;
+}
+
+.erf-choice-group legend {
+  margin-bottom: 7px;
+  font-size: 14px;
+  line-height: 1.25;
+  color: #374151;
+  font-weight: 500;
+}
+
+.erf-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.erf-choice input[type="checkbox"],
+.erf-choice input[type="radio"] {
+  margin: 0;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.erf-yes-no-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.erf-av-list {
+  margin-bottom: 8px;
+}
+
+.erf-note-block {
+  margin-top: 18px;
+  border-top: 1px solid #d1d5db;
+  padding-top: 12px;
+}
+
+.erf-note-block h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.erf-note-block ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.erf-note-block li {
+  margin-bottom: 5px;
+  color: #374151;
+  font-size: 14px;
+}
+
+.erf-error {
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.erf-actions {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.erf-button {
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+  padding: 7px 16px;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.erf-button-secondary {
+  background: #ffffff;
+  color: #111827;
+}
+
+.erf-button-primary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.erf-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .erf-paper {
+    border-radius: 8px;
+    padding: 22px 18px;
+  }
+
+  .erf-top h1 {
+    font-size: 30px;
+  }
+
+  .erf-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .erf-inline-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .erf-section h2 {
+    font-size: 19px;
+  }
+}
+
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  .erf-page-standalone,
+  .erf-page {
+    min-height: auto;
+    background: #ffffff !important;
+  }
+
+  .erf-paper {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    border: 1px solid #9ca3af;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 18px 18px 14px;
+    break-inside: avoid;
+  }
+
+  .erf-columns,
+  .erf-column,
+  .erf-section {
+    break-inside: avoid;
+  }
+}

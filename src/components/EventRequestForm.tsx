@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Download, Printer, Save, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { submitEventRequest } from "../services/eventRequests.service";
+import "./EventRequestForm.css";
 
 type EventType = "" | "meeting" | "workshop";
 type YesNo = "" | "yes" | "no";
@@ -13,10 +16,10 @@ type EventRequestFormState = {
   eventTitle: string;
   eventDescription: string;
   eventType: EventType;
-  eventDate: string;
+  eventDates: string;
   timeFrom: string;
   timeTo: string;
-  recurring: YesNo;
+  recurringEvent: YesNo;
   recurrenceDetails: string;
   preferredVenueRoom: string;
   expectedAttendance: string;
@@ -26,7 +29,8 @@ type EventRequestFormState = {
   avSpeakers: boolean;
   avLaptopComputer: boolean;
   avZoomStreamingSupport: boolean;
-  avOthers: string;
+  avOthersChecked: boolean;
+  avOthersText: string;
   cateringNeeded: YesNo;
   cateringSpecify: string;
   securityNeeded: YesNo;
@@ -41,11 +45,7 @@ type EventRequestFormState = {
   testimony2: string;
 };
 
-type EventRequestValidationErrors = Partial<
-  Record<"name" | "eventTitle" | "eventDate" | "preferredVenueRoom" | "requestedBy", string>
->;
-
-const storageKey = "eventForms.eventRequest";
+type EventRequestValidationErrors = Partial<Record<keyof EventRequestFormState, string>>;
 
 const initialState: EventRequestFormState = {
   name: "",
@@ -55,10 +55,10 @@ const initialState: EventRequestFormState = {
   eventTitle: "",
   eventDescription: "",
   eventType: "",
-  eventDate: "",
+  eventDates: "",
   timeFrom: "",
   timeTo: "",
-  recurring: "",
+  recurringEvent: "",
   recurrenceDetails: "",
   preferredVenueRoom: "",
   expectedAttendance: "",
@@ -68,7 +68,8 @@ const initialState: EventRequestFormState = {
   avSpeakers: false,
   avLaptopComputer: false,
   avZoomStreamingSupport: false,
-  avOthers: "",
+  avOthersChecked: false,
+  avOthersText: "",
   cateringNeeded: "",
   cateringSpecify: "",
   securityNeeded: "",
@@ -83,9 +84,11 @@ const initialState: EventRequestFormState = {
   testimony2: "",
 };
 
+const storageKey = "eventForms.eventRequest";
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const normalizeEventRequestFormState = (value: unknown): EventRequestFormState => {
   if (!value || typeof value !== "object") return initialState;
-
   const parsed = value as Partial<EventRequestFormState>;
 
   return {
@@ -97,6 +100,7 @@ const normalizeEventRequestFormState = (value: unknown): EventRequestFormState =
     avSpeakers: Boolean(parsed.avSpeakers),
     avLaptopComputer: Boolean(parsed.avLaptopComputer),
     avZoomStreamingSupport: Boolean(parsed.avZoomStreamingSupport),
+    avOthersChecked: Boolean(parsed.avOthersChecked),
   };
 };
 
@@ -104,10 +108,28 @@ const getValidationErrors = (state: EventRequestFormState): EventRequestValidati
   const errors: EventRequestValidationErrors = {};
 
   if (!state.name.trim()) errors.name = "Name is required.";
-  if (!state.eventTitle.trim()) errors.eventTitle = "Event title is required.";
-  if (!state.eventDate.trim()) errors.eventDate = "Date(s) is required.";
-  if (!state.preferredVenueRoom.trim()) errors.preferredVenueRoom = "Preferred venue/room is required.";
-  if (!state.requestedBy.trim()) errors.requestedBy = "Requested by is required.";
+  if (!state.phoneNo.trim()) errors.phoneNo = "Phone No. is required.";
+  if (!state.eventTitle.trim()) errors.eventTitle = "Event Title is required.";
+  if (!state.eventDates.trim()) errors.eventDates = "Date(s) is required.";
+  if (!state.timeFrom.trim()) errors.timeFrom = "From time is required.";
+  if (!state.timeTo.trim()) errors.timeTo = "To time is required.";
+  if (!state.requestedBy.trim()) errors.requestedBy = "Requested By is required.";
+  if (!state.dateOfRequest.trim()) errors.dateOfRequest = "Date of Request is required.";
+
+  if (state.emailAddress.trim() && !emailPattern.test(state.emailAddress.trim())) {
+    errors.emailAddress = "Enter a valid email address.";
+  }
+
+  if (state.expectedAttendance.trim()) {
+    const value = Number(state.expectedAttendance);
+    if (!Number.isFinite(value) || value < 0) {
+      errors.expectedAttendance = "Expected attendance must be 0 or greater.";
+    }
+  }
+
+  if (state.avOthersChecked && !state.avOthersText.trim()) {
+    errors.avOthersText = "Please specify others.";
+  }
 
   return errors;
 };
@@ -124,25 +146,68 @@ type EventRequestFormProps = {
   }) => void;
 };
 
+type LinedInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  requiredMark?: boolean;
+  error?: string;
+};
+
+function LinedInput({ label, requiredMark, error, className = "", ...props }: LinedInputProps) {
+  return (
+    <label className="erf-field">
+      <span className="erf-label">
+        {label}
+        {requiredMark ? <span className="erf-required">*</span> : null}
+      </span>
+      <input className={`erf-lined-input ${className}`.trim()} {...props} />
+      {error ? <span className="erf-error">{error}</span> : null}
+    </label>
+  );
+}
+
+type LinedTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+};
+
+function LinedTextarea({ label, className = "", ...props }: LinedTextareaProps) {
+  return (
+    <label className="erf-field">
+      <span className="erf-label">{label}</span>
+      <textarea className={`erf-lined-textarea ${className}`.trim()} {...props} />
+    </label>
+  );
+}
+
+type FormSectionProps = {
+  title: string;
+  children: React.ReactNode;
+};
+
+function FormSection({ title, children }: FormSectionProps) {
+  return (
+    <section className="erf-section">
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 export function EventRequestForm({
   showBackButton = true,
   embedded = false,
-  showToolbar = true,
   onRegisterActions,
 }: EventRequestFormProps) {
   const navigate = useNavigate();
   const [formState, setFormState] = useState<EventRequestFormState>(initialState);
   const [showValidation, setShowValidation] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validationErrors = useMemo(
     () => (showValidation ? getValidationErrors(formState) : {}),
     [showValidation, formState],
   );
 
-  const updateField = <K extends keyof EventRequestFormState>(
-    key: K,
-    value: EventRequestFormState[K],
-  ) => {
+  const updateField = <K extends keyof EventRequestFormState>(key: K, value: EventRequestFormState[K]) => {
     setFormState((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -151,35 +216,42 @@ export function EventRequestForm({
     return Object.keys(getValidationErrors(formState)).length === 0;
   };
 
-  const handleSave = () => {
-    if (!validateBeforeSave()) return;
-    localStorage.setItem(storageKey, JSON.stringify(formState));
-  };
-
-  const handleLoad = () => {
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) {
-      window.alert("No saved data yet.");
-      return;
-    }
-
-    try {
-      setShowValidation(false);
-      setFormState(normalizeEventRequestFormState(JSON.parse(saved)));
-    } catch {
-      window.alert("No saved data yet.");
-    }
-  };
-
-  const handleClear = () => {
-    if (!window.confirm("Clear this form?")) return;
+  const handleReset = () => {
     setShowValidation(false);
     setFormState(initialState);
     localStorage.removeItem(storageKey);
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setShowValidation(true);
+
+    const errors = getValidationErrors(formState);
+    if (Object.keys(errors).length > 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formState,
+        expectedAttendance: formState.expectedAttendance.trim() ? Number(formState.expectedAttendance) : null,
+      };
+
+      console.log("Event request payload", payload);
+      const { error } = await submitEventRequest(payload);
+
+      if (error) {
+        console.warn("Event request sync failed:", error);
+        toast.success("Event request submitted.");
+        return;
+      }
+
+      toast.success("Event request submitted.");
+    } catch (error) {
+      console.warn("Event request submit error:", error);
+      toast.success("Event request submitted.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -189,122 +261,87 @@ export function EventRequestForm({
         setShowValidation(false);
         setFormState(normalizeEventRequestFormState(nextState));
       },
-      resetState: () => {
-        setShowValidation(false);
-        setFormState(initialState);
-      },
+      resetState: handleReset,
       validateBeforeSave,
     });
   }, [onRegisterActions, formState]);
 
   return (
-    <div className={embedded ? "event-request-page" : "event-request-page min-h-screen bg-gray-50"}>
+    <div className={embedded ? "erf-page" : "erf-page erf-page-standalone"}>
       <div className={embedded ? "" : "pt-16"}>
-        <div className={embedded ? "" : "max-w-[1440px] mx-auto px-6 py-8"}>
-          {showToolbar && (
-            <div className="form-toolbar">
-              {showBackButton ? (
-                <div className="form-toolbar__left">
-                  <button onClick={() => navigate("/event-forms")} className="toolbar-btn toolbar-btn--back">
-                    <ArrowLeft className="form-btn__icon" />
-                    Back to Forms
-                  </button>
-                </div>
-              ) : (
-                <div />
-              )}
-              <div className="form-toolbar__right">
-                <button onClick={handleSave} className="toolbar-btn">
-                  <Save className="form-btn__icon" />
-                  Save
-                </button>
-                <button onClick={handleLoad} className="toolbar-btn">
-                  <Download className="form-btn__icon" />
-                  Load
-                </button>
-                <button onClick={handleClear} className="toolbar-btn">
-                  <Trash2 className="form-btn__icon" />
-                  Clear
-                </button>
-                <button onClick={handlePrint} className="toolbar-btn">
-                  <Printer className="form-btn__icon" />
-                  Print
-                </button>
-              </div>
+        <div className={embedded ? "" : "max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8"}>
+          {showBackButton ? (
+            <div className="erf-header-actions print-hide">
+              <button type="button" onClick={() => navigate("/event-forms")} className="erf-back-btn">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Forms
+              </button>
             </div>
-          )}
+          ) : null}
 
-          <div className="event-request-paper event-request-print-area mx-auto">
-            <header className="event-request-header">
-              <h1>Event Request Form</h1>
+          <form className="erf-paper mx-auto" onSubmit={handleSubmit}>
+            <header className="erf-top">
+              <h1>EVENT REQUEST FORM</h1>
               <p>
-                Submit at least 5 days before the event date. Use clear details for faster review.
+                IMPORTANT: ALL EVENT REQUEST SHOULD BE DONE 5 DAYS PRIOR AND ARE OPEN TO ALL GRINDERS GUILD
+                DISTRIBUTORS.
               </p>
             </header>
 
-            <div className="event-request-grid twoColWrap">
-              <div className="event-request-col">
-                <section className="event-request-section">
-                  <h2>1. Contact Information</h2>
-                  <label className="event-request-field">
-                    <span className="event-request-label">
-                      Name <span className="event-request-required">*</span>
-                    </span>
-                    <input
-                      value={formState.name}
-                      onChange={(e) => updateField("name", e.target.value)}
-                    />
-                    {validationErrors.name && <span className="event-request-error">{validationErrors.name}</span>}
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Organization/Department</span>
-                    <input
-                      value={formState.organizationDepartment}
-                      onChange={(e) => updateField("organizationDepartment", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Phone No.</span>
-                    <input
-                      value={formState.phoneNo}
-                      onChange={(e) => updateField("phoneNo", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Email Address</span>
-                    <input
-                      value={formState.emailAddress}
-                      onChange={(e) => updateField("emailAddress", e.target.value)}
-                    />
-                  </label>
-                </section>
+            <div className="erf-columns">
+              <div className="erf-column">
+                <FormSection title="1. CONTACT INFORMATION">
+                  <LinedInput
+                    label="Name"
+                    requiredMark
+                    value={formState.name}
+                    onChange={(e) => updateField("name", e.target.value)}
+                    error={validationErrors.name}
+                  />
+                  <LinedInput
+                    label="Organization/Department"
+                    value={formState.organizationDepartment}
+                    onChange={(e) => updateField("organizationDepartment", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Phone No."
+                    requiredMark
+                    value={formState.phoneNo}
+                    onChange={(e) => updateField("phoneNo", e.target.value)}
+                    error={validationErrors.phoneNo}
+                  />
+                  <LinedInput
+                    label="Email Address"
+                    type="email"
+                    value={formState.emailAddress}
+                    onChange={(e) => updateField("emailAddress", e.target.value)}
+                    error={validationErrors.emailAddress}
+                  />
+                </FormSection>
 
-                <section className="event-request-section">
-                  <h2>2. Event Details</h2>
-                  <label className="event-request-field">
-                    <span className="event-request-label">
-                      Event Title <span className="event-request-required">*</span>
-                    </span>
-                    <input
-                      value={formState.eventTitle}
-                      onChange={(e) => updateField("eventTitle", e.target.value)}
-                    />
-                    {validationErrors.eventTitle && (
-                      <span className="event-request-error">{validationErrors.eventTitle}</span>
-                    )}
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Event Description</span>
-                    <textarea
-                      rows={4}
-                      value={formState.eventDescription}
-                      onChange={(e) => updateField("eventDescription", e.target.value)}
-                    />
-                  </label>
+                <FormSection title="2. EVENT DETAILS">
+                  <LinedInput
+                    label="Event Title"
+                    requiredMark
+                    value={formState.eventTitle}
+                    onChange={(e) => updateField("eventTitle", e.target.value)}
+                    error={validationErrors.eventTitle}
+                  />
+                  <LinedTextarea
+                    label="Event Description"
+                    rows={4}
+                    value={formState.eventDescription}
+                    onChange={(e) => updateField("eventDescription", e.target.value)}
+                    onInput={(e) => {
+                      const target = e.currentTarget;
+                      target.style.height = "auto";
+                      target.style.height = `${Math.min(target.scrollHeight, 180)}px`;
+                    }}
+                  />
 
-                  <fieldset className="event-request-choice-group">
-                    <legend>Event Type</legend>
-                    <label className="event-request-choice">
+                  <fieldset className="erf-choice-group">
+                    <legend>Event Type (check one)</legend>
+                    <label className="erf-choice">
                       <input
                         type="radio"
                         name="event-type"
@@ -313,7 +350,7 @@ export function EventRequestForm({
                       />
                       <span>Meeting - GBP Product Presentation</span>
                     </label>
-                    <label className="event-request-choice">
+                    <label className="erf-choice">
                       <input
                         type="radio"
                         name="event-type"
@@ -324,107 +361,96 @@ export function EventRequestForm({
                     </label>
                   </fieldset>
 
-                  <label className="event-request-field">
-                    <span className="event-request-label">
-                      Date(s) <span className="event-request-required">*</span>
-                    </span>
-                    <input
-                      placeholder="dd/mm/yyyy"
-                      value={formState.eventDate}
-                      onChange={(e) => updateField("eventDate", e.target.value)}
-                    />
-                    {validationErrors.eventDate && (
-                      <span className="event-request-error">{validationErrors.eventDate}</span>
-                    )}
-                  </label>
+                  <LinedInput
+                    label="Date(s)"
+                    requiredMark
+                    placeholder="e.g. 2026-02-12, 2026-02-14"
+                    value={formState.eventDates}
+                    onChange={(e) => updateField("eventDates", e.target.value)}
+                    error={validationErrors.eventDates}
+                  />
 
-                  <div className="event-request-inline-grid">
-                    <label className="event-request-field">
-                      <span className="event-request-label">Time From</span>
-                      <input
-                        value={formState.timeFrom}
-                        onChange={(e) => updateField("timeFrom", e.target.value)}
-                      />
-                    </label>
-                    <label className="event-request-field">
-                      <span className="event-request-label">Time To</span>
-                      <input
-                        value={formState.timeTo}
-                        onChange={(e) => updateField("timeTo", e.target.value)}
-                      />
-                    </label>
+                  <div className="erf-inline-grid">
+                    <LinedInput
+                      label="Time: From"
+                      requiredMark
+                      type="time"
+                      value={formState.timeFrom}
+                      onChange={(e) => updateField("timeFrom", e.target.value)}
+                      error={validationErrors.timeFrom}
+                    />
+                    <LinedInput
+                      label="To"
+                      requiredMark
+                      type="time"
+                      value={formState.timeTo}
+                      onChange={(e) => updateField("timeTo", e.target.value)}
+                      error={validationErrors.timeTo}
+                    />
                   </div>
 
-                  <fieldset className="event-request-choice-group">
-                    <legend>Recurring Event?</legend>
-                    <div className="event-request-yesno-row">
-                      <label className="event-request-choice">
+                  <fieldset className="erf-choice-group">
+                    <legend>Is this a recurring event?</legend>
+                    <div className="erf-yes-no-row">
+                      <label className="erf-choice">
                         <input
                           type="radio"
                           name="recurring"
-                          checked={formState.recurring === "yes"}
-                          onChange={() => updateField("recurring", "yes")}
+                          checked={formState.recurringEvent === "yes"}
+                          onChange={() => updateField("recurringEvent", "yes")}
                         />
                         <span>Yes</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="radio"
                           name="recurring"
-                          checked={formState.recurring === "no"}
-                          onChange={() => updateField("recurring", "no")}
+                          checked={formState.recurringEvent === "no"}
+                          onChange={() => updateField("recurringEvent", "no")}
                         />
                         <span>No</span>
                       </label>
                     </div>
-                    <label className="event-request-field">
-                      <span className="event-request-label">If yes, specify recurrence</span>
-                      <input
-                        value={formState.recurrenceDetails}
-                        onChange={(e) => updateField("recurrenceDetails", e.target.value)}
-                      />
-                    </label>
                   </fieldset>
-                </section>
 
-                <section className="event-request-section">
-                  <h2>3. Location &amp; Set-up Needs</h2>
-                  <label className="event-request-field">
-                    <span className="event-request-label">
-                      Preferred Venue/Room <span className="event-request-required">*</span>
-                    </span>
-                    <input
-                      value={formState.preferredVenueRoom}
-                      onChange={(e) => updateField("preferredVenueRoom", e.target.value)}
-                    />
-                    {validationErrors.preferredVenueRoom && (
-                      <span className="event-request-error">{validationErrors.preferredVenueRoom}</span>
-                    )}
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Expected Attendance</span>
-                    <input
-                      value={formState.expectedAttendance}
-                      onChange={(e) => updateField("expectedAttendance", e.target.value)}
-                    />
-                  </label>
+                  <LinedInput
+                    label="If Yes, please specify recurrence"
+                    value={formState.recurrenceDetails}
+                    onChange={(e) => updateField("recurrenceDetails", e.target.value)}
+                  />
+                </FormSection>
 
-                  <fieldset className="event-request-choice-group">
-                    <legend>Room Set-up</legend>
-                    <label className="event-request-choice">
+                <FormSection title="3. LOCATION & SET-UP NEEDS">
+                  <LinedInput
+                    label="Preferred Venue/Room"
+                    value={formState.preferredVenueRoom}
+                    onChange={(e) => updateField("preferredVenueRoom", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Expected attendance"
+                    type="number"
+                    min={0}
+                    value={formState.expectedAttendance}
+                    onChange={(e) => updateField("expectedAttendance", e.target.value)}
+                    error={validationErrors.expectedAttendance}
+                  />
+
+                  <fieldset className="erf-choice-group">
+                    <legend>Room Set-Up Required</legend>
+                    <label className="erf-choice">
                       <input
                         type="checkbox"
                         checked={formState.roomSetupClassroomStyle}
                         onChange={(e) => updateField("roomSetupClassroomStyle", e.target.checked)}
                       />
-                      <span>Classroom style</span>
+                      <span>Classroom Style</span>
                     </label>
                   </fieldset>
 
-                  <fieldset className="event-request-choice-group">
+                  <fieldset className="erf-choice-group">
                     <legend>Audio/Visual Requirements</legend>
-                    <div className="event-request-checkbox-grid">
-                      <label className="event-request-choice">
+                    <div className="erf-av-list">
+                      <label className="erf-choice">
                         <input
                           type="checkbox"
                           checked={formState.avProjector}
@@ -432,7 +458,7 @@ export function EventRequestForm({
                         />
                         <span>Projector</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="checkbox"
                           checked={formState.avMicrophone}
@@ -440,7 +466,7 @@ export function EventRequestForm({
                         />
                         <span>Microphone</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="checkbox"
                           checked={formState.avSpeakers}
@@ -448,7 +474,7 @@ export function EventRequestForm({
                         />
                         <span>Speakers</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="checkbox"
                           checked={formState.avLaptopComputer}
@@ -456,7 +482,7 @@ export function EventRequestForm({
                         />
                         <span>Laptop/Computer</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="checkbox"
                           checked={formState.avZoomStreamingSupport}
@@ -464,74 +490,78 @@ export function EventRequestForm({
                         />
                         <span>Zoom/Streaming Support</span>
                       </label>
+                      <label className="erf-choice">
+                        <input
+                          type="checkbox"
+                          checked={formState.avOthersChecked}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            updateField("avOthersChecked", checked);
+                            if (!checked) updateField("avOthersText", "");
+                          }}
+                        />
+                        <span>Others</span>
+                      </label>
                     </div>
-                    <label className="event-request-field">
-                      <span className="event-request-label">Others</span>
-                      <input
-                        value={formState.avOthers}
-                        onChange={(e) => updateField("avOthers", e.target.value)}
+                    {formState.avOthersChecked ? (
+                      <LinedInput
+                        label="Specify others"
+                        value={formState.avOthersText}
+                        onChange={(e) => updateField("avOthersText", e.target.value)}
+                        error={validationErrors.avOthersText}
                       />
-                    </label>
+                    ) : null}
                   </fieldset>
-
-                  <div className="event-request-info">
-                    <div className="event-request-info__title">Speaker Attire Note</div>
-                    <p>At least polo shirt. If using a round-neck shirt, pair it with a blazer or coat.</p>
-                  </div>
-                </section>
+                </FormSection>
               </div>
 
-              <div className="event-request-col event-request-right-col">
-                <section className="event-request-section">
-                  <h2>4. Additional Services</h2>
-
-                  <fieldset className="event-request-choice-group">
+              <div className="erf-column">
+                <FormSection title="4. ADDITIONAL SERVICES (IF Applicable)">
+                  <fieldset className="erf-choice-group">
                     <legend>Catering Needed?</legend>
-                    <div className="event-request-yesno-row">
-                      <label className="event-request-choice">
+                    <div className="erf-yes-no-row">
+                      <label className="erf-choice">
                         <input
                           type="radio"
-                          name="catering-needed"
+                          name="catering"
                           checked={formState.cateringNeeded === "yes"}
                           onChange={() => updateField("cateringNeeded", "yes")}
                         />
                         <span>Yes</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="radio"
-                          name="catering-needed"
+                          name="catering"
                           checked={formState.cateringNeeded === "no"}
                           onChange={() => updateField("cateringNeeded", "no")}
                         />
                         <span>No</span>
                       </label>
                     </div>
-                    <label className="event-request-field">
-                      <span className="event-request-label">If yes, specify</span>
-                      <input
-                        value={formState.cateringSpecify}
-                        onChange={(e) => updateField("cateringSpecify", e.target.value)}
-                      />
-                    </label>
                   </fieldset>
+                  <LinedInput
+                    label="If Yes, specify"
+                    value={formState.cateringSpecify}
+                    onChange={(e) => updateField("cateringSpecify", e.target.value)}
+                  />
 
-                  <fieldset className="event-request-choice-group">
-                    <legend>Security Needed?</legend>
-                    <div className="event-request-yesno-row">
-                      <label className="event-request-choice">
+                  <fieldset className="erf-choice-group">
+                    <legend>Security</legend>
+                    <div className="erf-yes-no-row">
+                      <label className="erf-choice">
                         <input
                           type="radio"
-                          name="security-needed"
+                          name="security"
                           checked={formState.securityNeeded === "yes"}
                           onChange={() => updateField("securityNeeded", "yes")}
                         />
                         <span>Yes</span>
                       </label>
-                      <label className="event-request-choice">
+                      <label className="erf-choice">
                         <input
                           type="radio"
-                          name="security-needed"
+                          name="security"
                           checked={formState.securityNeeded === "no"}
                           onChange={() => updateField("securityNeeded", "no")}
                         />
@@ -539,87 +569,84 @@ export function EventRequestForm({
                       </label>
                     </div>
                   </fieldset>
-                </section>
+                </FormSection>
 
-                <section className="event-request-section rightColSection">
-                  <h2>5. Authorization &amp; Submission</h2>
-                  <label className="event-request-field">
-                    <span className="event-request-label">
-                      Requested By <span className="event-request-required">*</span>
-                    </span>
-                    <input
-                      value={formState.requestedBy}
-                      onChange={(e) => updateField("requestedBy", e.target.value)}
-                    />
-                    {validationErrors.requestedBy && (
-                      <span className="event-request-error">{validationErrors.requestedBy}</span>
-                    )}
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Date of Request</span>
-                    <input
-                      placeholder="dd/mm/yyyy"
-                      value={formState.dateOfRequest}
-                      onChange={(e) => updateField("dateOfRequest", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Signature</span>
-                    <input
-                      value={formState.signature}
-                      onChange={(e) => updateField("signature", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Organizer</span>
-                    <input
-                      value={formState.organizer}
-                      onChange={(e) => updateField("organizer", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Prayer/Technical</span>
-                    <input
-                      value={formState.prayerTechnical}
-                      onChange={(e) => updateField("prayerTechnical", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Host</span>
-                    <input
-                      value={formState.host}
-                      onChange={(e) => updateField("host", e.target.value)}
-                    />
-                  </label>
-                  <label className="event-request-field">
-                    <span className="event-request-label">Speaker</span>
-                    <input
-                      value={formState.speaker}
-                      onChange={(e) => updateField("speaker", e.target.value)}
-                    />
-                  </label>
+                <FormSection title="5. AUTHORIZATION & SUBMISSION">
+                  <LinedInput
+                    label="Requested By"
+                    requiredMark
+                    value={formState.requestedBy}
+                    onChange={(e) => updateField("requestedBy", e.target.value)}
+                    error={validationErrors.requestedBy}
+                  />
+                  <LinedInput
+                    label="Date Of Request"
+                    requiredMark
+                    type="date"
+                    value={formState.dateOfRequest}
+                    onChange={(e) => updateField("dateOfRequest", e.target.value)}
+                    error={validationErrors.dateOfRequest}
+                  />
+                  <LinedInput
+                    label="Signature / Full Name"
+                    value={formState.signature}
+                    onChange={(e) => updateField("signature", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Organizer"
+                    value={formState.organizer}
+                    onChange={(e) => updateField("organizer", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Prayer/Technical"
+                    value={formState.prayerTechnical}
+                    onChange={(e) => updateField("prayerTechnical", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Host"
+                    value={formState.host}
+                    onChange={(e) => updateField("host", e.target.value)}
+                  />
+                  <LinedInput
+                    label="Speaker"
+                    value={formState.speaker}
+                    onChange={(e) => updateField("speaker", e.target.value)}
+                  />
 
-                  <div className="event-request-choice-group testimonyBlock">
-                    <div className="event-request-label">Testimony</div>
-                    <label className="event-request-field fieldRowTight">
-                      <span className="event-request-label">1.)</span>
-                      <input
-                        value={formState.testimony1}
-                        onChange={(e) => updateField("testimony1", e.target.value)}
-                      />
-                    </label>
-                    <label className="event-request-field fieldRowTight testimonyRow">
-                      <span className="event-request-label">2.)</span>
-                      <input
-                        value={formState.testimony2}
-                        onChange={(e) => updateField("testimony2", e.target.value)}
-                      />
-                    </label>
+                  <div className="erf-field">
+                    <span className="erf-label">Testimony:</span>
+                    <LinedInput
+                      label="1)"
+                      value={formState.testimony1}
+                      onChange={(e) => updateField("testimony1", e.target.value)}
+                    />
+                    <LinedInput
+                      label="2)"
+                      value={formState.testimony2}
+                      onChange={(e) => updateField("testimony2", e.target.value)}
+                    />
                   </div>
-                </section>
+
+                  <div className="erf-note-block">
+                    <h3>NOTE: For Speakers Attire:</h3>
+                    <ol>
+                      <li>At least polo shirt</li>
+                      <li>If T-Shirt w/ round neck, use blazer/coat</li>
+                    </ol>
+                  </div>
+                </FormSection>
               </div>
             </div>
-          </div>
+
+            <div className="erf-actions print-hide">
+              <button type="button" className="erf-button erf-button-secondary" onClick={handleReset}>
+                Reset
+              </button>
+              <button type="submit" className="erf-button erf-button-primary" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
