@@ -125,7 +125,7 @@ export function EventFormsHome() {
 
   const handlePrint = () => {
     applyPrintFit();
-    window.print();
+    requestAnimationFrame(() => window.print());
   };
 
   return (

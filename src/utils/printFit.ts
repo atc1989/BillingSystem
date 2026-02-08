@@ -1,6 +1,7 @@
 let activePrintElement: HTMLElement | null = null;
 let prevTransform = "";
 let prevTransformOrigin = "";
+let restorePrintOnlyDisplay: (() => void) | null = null;
 
 function mmToPx(mm: number): number {
   const probe = document.createElement("div");
@@ -13,30 +14,48 @@ function mmToPx(mm: number): number {
   return mm * pxPerMm;
 }
 
-function isVisible(el: Element): el is HTMLElement {
-  const node = el as HTMLElement;
-  if (!node) return false;
-  if (node.offsetParent !== null) return true;
-  const rect = node.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
-
 export function applyPrintFit() {
-  const candidates = Array.from(document.querySelectorAll("[data-print-fit]"));
-  const target = candidates.find(isVisible);
+  const target = document.querySelector(".print-only [data-print-fit]") as HTMLElement | null;
   if (!target) return;
+
+  console.log("[printFit] target found:", Boolean(target));
+
+  const printOnlyParent = target.closest(".print-only") as HTMLElement | null;
+  if (printOnlyParent) {
+    const currentDisplay = window.getComputedStyle(printOnlyParent).display;
+    if (currentDisplay === "none") {
+      const previousInline = printOnlyParent.style.display;
+      printOnlyParent.style.display = "block";
+      restorePrintOnlyDisplay = () => {
+        printOnlyParent.style.display = previousInline;
+      };
+    } else {
+      restorePrintOnlyDisplay = null;
+    }
+  } else {
+    restorePrintOnlyDisplay = null;
+  }
 
   activePrintElement = target;
   prevTransform = target.style.transform;
   prevTransformOrigin = target.style.transformOrigin;
 
   target.style.transform = "none";
-  target.style.transformOrigin = "top center";
+  target.style.transformOrigin = "top left";
 
+  target.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
   const contentWidth = rect.width;
   const contentHeight = rect.height;
-  if (!contentWidth || !contentHeight) return;
+  console.log("[printFit] measured:", { contentWidth, contentHeight });
+  if (contentWidth <= 0 || contentHeight <= 0) {
+    console.log("[printFit] skip scale due to non-positive size");
+    if (restorePrintOnlyDisplay) {
+      restorePrintOnlyDisplay();
+      restorePrintOnlyDisplay = null;
+    }
+    return;
+  }
 
   const a4WidthPx = mmToPx(210);
   const a4HeightPx = mmToPx(297);
@@ -48,9 +67,11 @@ export function applyPrintFit() {
   const heightScale = availableHeight / contentHeight;
   let scale = Math.min(widthScale, heightScale);
   if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+  if (scale < 1) scale = 1;
   if (scale > 1) scale = Math.min(scale, 1.35);
+  console.log("[printFit] scale:", scale);
 
-  target.style.transformOrigin = "top center";
+  target.style.transformOrigin = "top left";
   target.style.transform = `scale(${scale})`;
 }
 
@@ -59,6 +80,10 @@ export function resetPrintFit() {
   activePrintElement.style.transform = prevTransform || "";
   activePrintElement.style.transformOrigin = prevTransformOrigin || "";
   activePrintElement = null;
+  if (restorePrintOnlyDisplay) {
+    restorePrintOnlyDisplay();
+    restorePrintOnlyDisplay = null;
+  }
 }
 
 export function registerPrintFitListeners() {

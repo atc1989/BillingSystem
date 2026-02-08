@@ -272,7 +272,7 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
               className="erf-button"
               onClick={() => {
                 applyPrintFit();
-                window.print();
+                requestAnimationFrame(() => window.print());
               }}
             >
               Print

@@ -115,7 +115,7 @@ export function ProspectInvitationForm({
 
   const handlePrint = () => {
     applyPrintFit();
-    window.print();
+    requestAnimationFrame(() => window.print());
   };
 
   useEffect(() => {

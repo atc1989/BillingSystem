@@ -178,7 +178,7 @@ export function SpecialCompanyEventsForm({
 
   const handlePrint = () => {
     applyPrintFit();
-    window.print();
+    requestAnimationFrame(() => window.print());
   };
 
   useEffect(() => {
