@@ -315,8 +315,10 @@ export function SpecialCompanyEventsForm({
             </div>
           </div>
 
-          <div className="print-only print-root">
-            <div className="sce-print-paper">
+          <div className="print-only">
+            <div className="print-page">
+              <div className="print-content print-root">
+                <div className="sce-print-paper">
               <div className="sce-print-title">
                 <div>SPECIAL COMPANY EVENTS</div>
                 <div>(with speaker)</div>
@@ -365,6 +367,8 @@ export function SpecialCompanyEventsForm({
                 <div className="sce-print-line">
                   <span className="sce-print-label">Checked by:</span>
                   <span className="sce-print-value">{printText(formState.checkedByName)}</span>
+                </div>
+              </div>
                 </div>
               </div>
             </div>
