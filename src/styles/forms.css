@@ -29,6 +29,15 @@
   flex-wrap: wrap;
 }
 
+.form-actions-bottom {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
 .print-hint {
   flex-basis: 100%;
   font-size: 11px;
@@ -78,6 +87,10 @@
 
 @media (max-width: 520px) {
   .form-actions {
+    justify-content: flex-start;
+  }
+
+  .form-actions-bottom {
     justify-content: flex-start;
   }
 

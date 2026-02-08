@@ -1,18 +1,10 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { EventRequestForm } from "./EventRequestForm";
-import { EventFormsToolbar } from "./EventFormsToolbar";
 import { ProspectInvitationForm } from "./ProspectInvitationForm";
 import { SpecialCompanyEventsForm } from "./SpecialCompanyEventsForm";
 
 type EventFormTab = "special" | "request" | "prospect";
-
-type FormActions = {
-  getState: () => unknown;
-  setState: (state: unknown) => void;
-  resetState: () => void;
-  validateBeforeSave?: () => boolean;
-};
 
 type TabItem = {
   key: EventFormTab;
@@ -20,12 +12,6 @@ type TabItem = {
 };
 
 const activeTabStorageKey = "eventForms.activeTab";
-const formStorageKeys: Record<EventFormTab, string> = {
-  special: "eventForms.specialCompanyEvents",
-  request: "eventForms.eventRequest",
-  prospect: "eventForms.prospectInvitation",
-};
-
 const tabs: TabItem[] = [
   { key: "special", label: "Special Company Events" },
   { key: "request", label: "Event Request" },
@@ -75,7 +61,6 @@ function EventFormsTabs({ activeTab, onChange }: EventFormsTabsProps) {
 export function EventFormsHome() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<EventFormTab>(() => getInitialTab(searchParams.get("tab")));
-  const actionsRef = useRef<Partial<Record<EventFormTab, FormActions>>>({});
 
   const setTab = (tab: EventFormTab) => {
     setActiveTab(tab);
@@ -85,45 +70,6 @@ export function EventFormsHome() {
       next.set("tab", tab);
       return next;
     });
-  };
-
-  const runActive = (action: "getState" | "setState" | "resetState") => {
-    const actions = actionsRef.current[activeTab];
-    if (!actions) return;
-
-    const storageKey = formStorageKeys[activeTab];
-
-    switch (action) {
-      case "getState":
-        if (actions.validateBeforeSave && !actions.validateBeforeSave()) return;
-        localStorage.setItem(storageKey, JSON.stringify(actions.getState()));
-        break;
-      case "setState": {
-        const saved = localStorage.getItem(storageKey);
-        if (!saved) {
-          window.alert("No saved data yet.");
-          return;
-        }
-
-        try {
-          actions.setState(JSON.parse(saved));
-        } catch {
-          window.alert("No saved data yet.");
-        }
-        break;
-      }
-      case "resetState":
-        if (!window.confirm("Clear this form?")) return;
-        actions.resetState();
-        localStorage.removeItem(storageKey);
-        break;
-      default:
-        break;
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   return (
@@ -137,17 +83,6 @@ export function EventFormsHome() {
 
           <EventFormsTabs activeTab={activeTab} onChange={setTab} />
 
-          {activeTab !== "special" ? (
-            <div className="flex flex-col gap-2 md:gap-0 md:flex-row md:items-end md:justify-end mb-6">
-              <EventFormsToolbar
-                onSave={() => runActive("getState")}
-                onLoad={() => runActive("setState")}
-                onClear={() => runActive("resetState")}
-                onPrint={handlePrint}
-              />
-            </div>
-          ) : null}
-
           <div className="space-y-5">
             <div className={activeTab === "special" ? "block" : "hidden"}>
               <SpecialCompanyEventsForm
@@ -155,9 +90,6 @@ export function EventFormsHome() {
                 showBackButton={false}
                 showToolbar={false}
                 showPrintRoot={activeTab === "special"}
-                onRegisterActions={(actions) => {
-                  actionsRef.current.special = actions;
-                }}
               />
             </div>
             <div className={activeTab === "request" ? "block" : "hidden"}>
@@ -166,9 +98,6 @@ export function EventFormsHome() {
                 showBackButton={false}
                 showToolbar={false}
                 showPrintRoot={activeTab === "request"}
-                onRegisterActions={(actions) => {
-                  actionsRef.current.request = actions;
-                }}
               />
             </div>
             <div className={activeTab === "prospect" ? "block" : "hidden"}>
@@ -177,9 +106,6 @@ export function EventFormsHome() {
                 showBackButton={false}
                 showToolbar={false}
                 showPrintRoot={activeTab === "prospect"}
-                onRegisterActions={(actions) => {
-                  actionsRef.current.prospect = actions;
-                }}
               />
             </div>
           </div>

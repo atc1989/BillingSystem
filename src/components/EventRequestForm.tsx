@@ -140,6 +140,7 @@ type EventRequestFormProps = {
   embedded?: boolean;
   showToolbar?: boolean;
   showPrintRoot?: boolean;
+  showActions?: boolean;
   onRegisterActions?: (actions: {
     getState: () => unknown;
     setState: (state: unknown) => void;
@@ -224,6 +225,7 @@ export function EventRequestForm({
   embedded = false,
   showToolbar = true,
   showPrintRoot = true,
+  showActions = true,
   onRegisterActions,
 }: EventRequestFormProps) {
   const navigate = useNavigate();
@@ -415,27 +417,6 @@ export function EventRequestForm({
               ) : (
                 <div />
               )}
-              <div className="form-actions no-print">
-                <FormActionButton type="button" onClick={handleSave}>
-                  <Save className="form-btn__icon" />
-                  Save
-                </FormActionButton>
-                <FormActionButton type="button" onClick={handleLoad}>
-                  <Download className="form-btn__icon" />
-                  Load
-                </FormActionButton>
-                <FormActionButton type="button" onClick={handleClear}>
-                  <Trash2 className="form-btn__icon" />
-                  Clear
-                </FormActionButton>
-                <FormActionButton type="button" onClick={handlePrint}>
-                  <Printer className="form-btn__icon" />
-                  Print
-                </FormActionButton>
-                <span className="print-hint no-print">
-                  Disable Headers and Footers in the print dialog for best results.
-                </span>
-              </div>
             </div>
           )}
 
@@ -774,6 +755,30 @@ export function EventRequestForm({
                 </FormSection>
               </div>
             </div>
+
+            {showActions ? (
+              <div className="form-actions-bottom no-print">
+                <FormActionButton type="button" onClick={handleSave}>
+                  <Save className="form-btn__icon" />
+                  Save
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handleLoad}>
+                  <Download className="form-btn__icon" />
+                  Load
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handleClear}>
+                  <Trash2 className="form-btn__icon" />
+                  Clear
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handlePrint}>
+                  <Printer className="form-btn__icon" />
+                  Print
+                </FormActionButton>
+                <span className="print-hint no-print">
+                  Disable Headers and Footers in the print dialog for best results.
+                </span>
+              </div>
+            ) : null}
           </div>
 
           {printRoot}

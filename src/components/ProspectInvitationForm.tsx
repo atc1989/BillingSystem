@@ -58,6 +58,7 @@ type ProspectInvitationFormProps = {
   embedded?: boolean;
   showToolbar?: boolean;
   showPrintRoot?: boolean;
+  showActions?: boolean;
   onRegisterActions?: (actions: {
     getState: () => unknown;
     setState: (state: unknown) => void;
@@ -70,6 +71,7 @@ export function ProspectInvitationForm({
   embedded = false,
   showToolbar = true,
   showPrintRoot = true,
+  showActions = true,
   onRegisterActions,
 }: ProspectInvitationFormProps) {
   const navigate = useNavigate();
@@ -180,27 +182,6 @@ export function ProspectInvitationForm({
               ) : (
                 <div />
               )}
-              <div className="form-actions no-print">
-                <FormActionButton onClick={handleSave}>
-                  <Save className="form-btn__icon" />
-                  Save
-                </FormActionButton>
-                <FormActionButton onClick={handleLoad}>
-                  <Download className="form-btn__icon" />
-                  Load
-                </FormActionButton>
-                <FormActionButton onClick={handleClear}>
-                  <Trash2 className="form-btn__icon" />
-                  Clear
-                </FormActionButton>
-                <FormActionButton onClick={handlePrint}>
-                  <Printer className="form-btn__icon" />
-                  Print
-                </FormActionButton>
-                <span className="print-hint no-print">
-                  Disable Headers and Footers in the print dialog for best results.
-                </span>
-              </div>
             </div>
           )}
 
@@ -264,6 +245,30 @@ export function ProspectInvitationForm({
                 Add Row
               </FormActionButton>
             </div>
+
+            {showActions ? (
+              <div className="form-actions-bottom no-print">
+                <FormActionButton onClick={handleSave}>
+                  <Save className="form-btn__icon" />
+                  Save
+                </FormActionButton>
+                <FormActionButton onClick={handleLoad}>
+                  <Download className="form-btn__icon" />
+                  Load
+                </FormActionButton>
+                <FormActionButton onClick={handleClear}>
+                  <Trash2 className="form-btn__icon" />
+                  Clear
+                </FormActionButton>
+                <FormActionButton onClick={handlePrint}>
+                  <Printer className="form-btn__icon" />
+                  Print
+                </FormActionButton>
+                <span className="print-hint no-print">
+                  Disable Headers and Footers in the print dialog for best results.
+                </span>
+              </div>
+            ) : null}
           </div>
 
           {printRoot}
