@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Save, Trash2 } from "lucide-react";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import { FormActionButton } from "./ui/FormActionButton";
-import { logPrint, upsertSubmissionForPrint } from "../services/formPrintTracking.service";
+import { toast } from "sonner";
+import {
+  fetchRecentPrints,
+  fetchSubmissionById,
+  logPrint,
+  upsertSubmissionForPrint,
+  type RecentPrintRow,
+} from "../services/formPrintTracking.service";
+import { RecentPrintsTable } from "./forms/RecentPrintsTable";
 import "./EventRequestForm.css";
 
 type EventType = "" | "meeting" | "workshop";
@@ -236,6 +244,7 @@ export function EventRequestForm({
   const [referenceNo, setReferenceNo] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [recentPrints, setRecentPrints] = useState<RecentPrintRow[]>([]);
 
   const validationErrors = useMemo(
     () => (showValidation ? getValidationErrors(formState) : {}),
@@ -282,6 +291,11 @@ export function EventRequestForm({
     handleReset();
   };
 
+  const loadRecentPrints = useCallback(async () => {
+    const result = await fetchRecentPrints({ formType: "ER" });
+    if (!result.error) setRecentPrints(result.data);
+  }, []);
+
   const handlePrint = async () => {
     if (isPrinting) return;
     setIsPrinting(true);
@@ -314,6 +328,7 @@ export function EventRequestForm({
         return;
       }
 
+      await loadRecentPrints();
       window.print();
     } finally {
       setIsPrinting(false);
@@ -332,6 +347,24 @@ export function EventRequestForm({
     });
   }, [onRegisterActions, formState]);
 
+  useEffect(() => {
+    loadRecentPrints();
+  }, [loadRecentPrints]);
+
+  const handleLoadSubmission = async (id: string) => {
+    const result = await fetchSubmissionById(id);
+    if (result.error || !result.data) {
+      window.alert(result.error || "Failed to load submission.");
+      return;
+    }
+
+    setShowValidation(false);
+    setFormState(normalizeEventRequestFormState(result.data.payload));
+    setSubmissionId(result.data.id);
+    setReferenceNo(result.data.reference_no);
+    toast.success(`Loaded ${result.data.reference_no}`);
+  };
+
   const printRoot =
     showPrintRoot && typeof document !== "undefined"
       ? createPortal(
@@ -339,7 +372,7 @@ export function EventRequestForm({
               <div className="print-section">
                 <div className="print-line">
                   <span className="print-label">Reference No:</span>
-                  <span className="print-value">{referenceNo ?? "—"}</span>
+                  <span className="print-value">{referenceNo ?? "\u2014"}</span>
                 </div>
                 <div className="print-line">
                   <span className="print-label">Date Printed:</span>
@@ -805,6 +838,8 @@ export function EventRequestForm({
               </div>
             </div>
 
+            <RecentPrintsTable formType="ER" rows={recentPrints} onLoad={handleLoadSubmission} />
+
             {showActions ? (
               <div className="form-actions-bottom no-print">
                 <FormActionButton type="button" onClick={handleSave}>
@@ -836,4 +871,5 @@ export function EventRequestForm({
     </div>
   );
 }
+
 

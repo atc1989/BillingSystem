@@ -1,9 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Plus, Save, Trash2 } from "lucide-react";
 import { FormActionButton } from "./ui/FormActionButton";
-import { logPrint, upsertSubmissionForPrint } from "../services/formPrintTracking.service";
+import { toast } from "sonner";
+import {
+  fetchRecentPrints,
+  fetchSubmissionById,
+  logPrint,
+  upsertSubmissionForPrint,
+  type RecentPrintRow,
+} from "../services/formPrintTracking.service";
+import { RecentPrintsTable } from "./forms/RecentPrintsTable";
 import "./ProspectInvitationForm.css";
 
 type ProspectRow = {
@@ -81,6 +89,7 @@ export function ProspectInvitationForm({
   const [referenceNo, setReferenceNo] = useState<string | null>(null);
   const [printedAt, setPrintedAt] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [recentPrints, setRecentPrints] = useState<RecentPrintRow[]>([]);
 
   const printableRows = useMemo(() => {
     const filled = rows.filter(hasRowContent);
@@ -124,6 +133,11 @@ export function ProspectInvitationForm({
     localStorage.removeItem(storageKey);
   };
 
+  const loadRecentPrints = useCallback(async () => {
+    const result = await fetchRecentPrints({ formType: "PI" });
+    if (!result.error) setRecentPrints(result.data);
+  }, []);
+
   const handlePrint = async () => {
     if (isPrinting) return;
     setIsPrinting(true);
@@ -156,6 +170,7 @@ export function ProspectInvitationForm({
         return;
       }
 
+      await loadRecentPrints();
       window.print();
     } finally {
       setIsPrinting(false);
@@ -170,6 +185,25 @@ export function ProspectInvitationForm({
     });
   }, [onRegisterActions, rows]);
 
+  useEffect(() => {
+    loadRecentPrints();
+  }, [loadRecentPrints]);
+
+  const handleLoadSubmission = async (id: string) => {
+    const result = await fetchSubmissionById(id);
+    if (result.error || !result.data) {
+      window.alert(result.error || "Failed to load submission.");
+      return;
+    }
+
+    const payload = result.data.payload as Record<string, unknown>;
+    const payloadRows = Array.isArray(payload) ? payload : (payload.rows as ProspectRow[]) ?? [];
+    setRows(normalizeProspectRows(payloadRows));
+    setSubmissionId(result.data.id);
+    setReferenceNo(result.data.reference_no);
+    toast.success(`Loaded ${result.data.reference_no}`);
+  };
+
   const printRoot =
     showPrintRoot && typeof document !== "undefined"
       ? createPortal(
@@ -177,7 +211,7 @@ export function ProspectInvitationForm({
             <div className="print-section">
               <div className="print-line">
                 <span className="print-label">Reference No:</span>
-                <span className="print-value">{referenceNo ?? "—"}</span>
+                <span className="print-value">{referenceNo ?? "\u2014"}</span>
               </div>
               <div className="print-line">
                 <span className="print-label">Date Printed:</span>
@@ -295,6 +329,8 @@ export function ProspectInvitationForm({
               </FormActionButton>
             </div>
 
+            <RecentPrintsTable formType="PI" rows={recentPrints} onLoad={handleLoadSubmission} />
+
             {showActions ? (
               <div className="form-actions-bottom no-print">
                 <FormActionButton onClick={handleSave}>
@@ -326,3 +362,4 @@ export function ProspectInvitationForm({
     </div>
   );
 }
+

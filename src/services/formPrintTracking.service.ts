@@ -72,3 +72,48 @@ export async function logPrint({ submissionId, formType, referenceNo }: LogParam
 
   return { error: null as string | null };
 }
+
+export type RecentPrintRow = {
+  id: string;
+  printed_at: string | null;
+  reference_no: string | null;
+  submission_id: string | null;
+  form_type: FormType | null;
+  form_submissions?: { payload?: Record<string, unknown> } | Array<{ payload?: Record<string, unknown> }>;
+};
+
+export async function fetchRecentPrints({ formType, limit = 10 }: { formType: FormType; limit?: number }) {
+  const { data, error } = await supabase
+    .from("print_logs")
+    .select("id, printed_at, reference_no, submission_id, form_type, form_submissions(payload)")
+    .eq("form_type", formType)
+    .order("printed_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    return { data: [] as RecentPrintRow[], error: error.message };
+  }
+
+  return { data: (data ?? []) as RecentPrintRow[], error: null as string | null };
+}
+
+export async function fetchSubmissionById(submissionId: string) {
+  const { data, error } = await supabase
+    .from("form_submissions")
+    .select("id, reference_no, payload")
+    .eq("id", submissionId)
+    .single();
+
+  if (error || !data) {
+    return { data: null as { id: string; reference_no: string; payload: Record<string, unknown> } | null, error: error?.message || "Failed to load submission." };
+  }
+
+  return {
+    data: {
+      id: data.id,
+      reference_no: data.reference_no,
+      payload: (data.payload ?? {}) as Record<string, unknown>,
+    },
+    error: null as string | null,
+  };
+}
