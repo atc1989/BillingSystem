@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, Printer, Save, Trash2 } from "lucide-react";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import { FormActionButton } from "./ui/FormActionButton";
 import { applyPrintFit } from "../utils/printFit";
@@ -138,6 +138,7 @@ const getValidationErrors = (state: EventRequestFormState): EventRequestValidati
 type EventRequestFormProps = {
   showBackButton?: boolean;
   embedded?: boolean;
+  showToolbar?: boolean;
   onRegisterActions?: (actions: {
     getState: () => unknown;
     setState: (state: unknown) => void;
@@ -217,7 +218,12 @@ function PrintField({ label, value, multiline = false }: PrintFieldProps) {
   );
 }
 
-export function EventRequestForm({ showBackButton = true, embedded = false, onRegisterActions }: EventRequestFormProps) {
+export function EventRequestForm({
+  showBackButton = true,
+  embedded = false,
+  showToolbar = true,
+  onRegisterActions,
+}: EventRequestFormProps) {
   const navigate = useNavigate();
   const [formState, setFormState] = useState<EventRequestFormState>(initialState);
   const [showValidation, setShowValidation] = useState(false);
@@ -242,6 +248,36 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
     localStorage.removeItem(storageKey);
   };
 
+  const handleSave = () => {
+    if (!validateBeforeSave()) return;
+    localStorage.setItem(storageKey, JSON.stringify(formState));
+  };
+
+  const handleLoad = () => {
+    const saved = localStorage.getItem(storageKey);
+    if (!saved) {
+      window.alert("No saved data yet.");
+      return;
+    }
+
+    try {
+      setShowValidation(false);
+      setFormState(normalizeEventRequestFormState(JSON.parse(saved)));
+    } catch {
+      window.alert("No saved data yet.");
+    }
+  };
+
+  const handleClear = () => {
+    if (!window.confirm("Clear this form?")) return;
+    handleReset();
+  };
+
+  const handlePrint = () => {
+    applyPrintFit();
+    requestAnimationFrame(() => window.print());
+  };
+
   useEffect(() => {
     onRegisterActions?.({
       getState: () => formState,
@@ -258,26 +294,38 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
     <div className={embedded ? "erf-page" : "erf-page erf-page-standalone"}>
       <div className={embedded ? "" : "pt-16"}>
         <div className={embedded ? "" : "erf-shell max-w-[1440px] mx-auto px-4 md:px-6 py-6 md:py-8"}>
-          <div className="erf-header-actions no-print">
-            {showBackButton ? (
-              <FormActionButton type="button" onClick={() => navigate("/event-forms")} className="erf-back-btn">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Forms
-              </FormActionButton>
-            ) : (
-              <div />
-            )}
-            <FormActionButton
-              type="button"
-              className="erf-button"
-              onClick={() => {
-                applyPrintFit();
-                requestAnimationFrame(() => window.print());
-              }}
-            >
-              Print
-            </FormActionButton>
-          </div>
+          {showToolbar && (
+            <div className="erf-header-actions no-print">
+              {showBackButton ? (
+                <div className="form-toolbar__left no-print">
+                  <FormActionButton type="button" onClick={() => navigate("/event-forms")} className="erf-back-btn">
+                    <ArrowLeft className="form-btn__icon" />
+                    Back to Forms
+                  </FormActionButton>
+                </div>
+              ) : (
+                <div />
+              )}
+              <div className="form-actions no-print">
+                <FormActionButton type="button" onClick={handleSave}>
+                  <Save className="form-btn__icon" />
+                  Save
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handleLoad}>
+                  <Download className="form-btn__icon" />
+                  Load
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handleClear}>
+                  <Trash2 className="form-btn__icon" />
+                  Clear
+                </FormActionButton>
+                <FormActionButton type="button" onClick={handlePrint}>
+                  <Printer className="form-btn__icon" />
+                  Print
+                </FormActionButton>
+              </div>
+            </div>
+          )}
 
           <div className="screen-form no-print">
             <header className="erf-screen-top">

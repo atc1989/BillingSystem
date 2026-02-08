@@ -2275,19 +2275,6 @@ html {
     page-break-inside: avoid;
   }
 
-  body * {
-    visibility: hidden;
-  }
-
-  .event-request-print-area,
-  .event-request-print-area * {
-    visibility: visible;
-  }
-
-  .event-request-print-area {
-    position: absolute;
-    inset: 0 auto auto 0;
-  }
 }
 
 .prospect-paper {
@@ -2407,29 +2394,4 @@ html {
     page-break-inside: avoid;
   }
 
-  body * {
-    visibility: hidden;
-  }
-
-  .prospect-print-area,
-  .prospect-print-area * {
-    visibility: visible;
-  }
-
-  .prospect-print-area {
-    position: absolute;
-    inset: 0 auto auto 0;
-  }
-}
-
-@media print {
-  .special-company-events-print-area,
-  .special-company-events-print-area * {
-    visibility: visible;
-  }
-
-  .special-company-events-print-area {
-    position: absolute;
-    inset: 0 auto auto 0;
-  }
 }

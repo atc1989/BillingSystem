@@ -12,11 +12,21 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-height: 30px;
+  white-space: nowrap;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
     transform 140ms ease,
     box-shadow 140ms ease;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .btn-pill:hover {
@@ -56,5 +66,17 @@
 
   .btn-pill:focus-visible {
     outline-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+@media (max-width: 520px) {
+  .form-actions {
+    justify-content: flex-start;
+  }
+
+  .btn-pill {
+    font-size: 12px;
+    padding: 6px 10px;
+    min-height: 30px;
   }
 }

@@ -2,14 +2,17 @@ let activePrintElement: HTMLElement | null = null;
 let prevTransform = "";
 let prevTransformOrigin = "";
 let restorePrintOnlyDisplay: (() => void) | null = null;
+const PRINT_MARGIN_MM = 8;
+const MIN_SCALE = 0.8;
+const MAX_SCALE = 1.35;
 
 function mmToPx(mm: number): number {
   const probe = document.createElement("div");
   probe.style.position = "absolute";
   probe.style.visibility = "hidden";
-  probe.style.width = "100mm";
+  probe.style.width = "1mm";
   document.body.appendChild(probe);
-  const pxPerMm = probe.getBoundingClientRect().width / 100;
+  const pxPerMm = probe.getBoundingClientRect().width;
   document.body.removeChild(probe);
   return mm * pxPerMm;
 }
@@ -17,8 +20,6 @@ function mmToPx(mm: number): number {
 export function applyPrintFit() {
   const target = document.querySelector(".print-only [data-print-fit]") as HTMLElement | null;
   if (!target) return;
-
-  console.log("[printFit] target found:", Boolean(target));
 
   const printOnlyParent = target.closest(".print-only") as HTMLElement | null;
   if (printOnlyParent) {
@@ -45,11 +46,7 @@ export function applyPrintFit() {
 
   target.getBoundingClientRect();
   const rect = target.getBoundingClientRect();
-  const contentWidth = rect.width;
-  const contentHeight = rect.height;
-  console.log("[printFit] measured:", { contentWidth, contentHeight });
-  if (contentWidth <= 0 || contentHeight <= 0) {
-    console.log("[printFit] skip scale due to non-positive size");
+  if (rect.width <= 0 || rect.height <= 0) {
     if (restorePrintOnlyDisplay) {
       restorePrintOnlyDisplay();
       restorePrintOnlyDisplay = null;
@@ -57,19 +54,20 @@ export function applyPrintFit() {
     return;
   }
 
-  const a4WidthPx = mmToPx(210);
-  const a4HeightPx = mmToPx(297);
-  const marginPx = mmToPx(8);
-  const availableWidth = a4WidthPx - marginPx * 2;
-  const availableHeight = a4HeightPx - marginPx * 2;
+  const availableWidth = mmToPx(210 - PRINT_MARGIN_MM * 2);
+  const availableHeight = mmToPx(297 - PRINT_MARGIN_MM * 2);
 
-  const widthScale = availableWidth / contentWidth;
-  const heightScale = availableHeight / contentHeight;
+  const widthScale = availableWidth / rect.width;
+  const heightScale = availableHeight / rect.height;
   let scale = Math.min(widthScale, heightScale);
-  if (!Number.isFinite(scale) || scale <= 0) scale = 1;
-  if (scale < 1) scale = 1;
-  if (scale > 1) scale = Math.min(scale, 1.35);
-  console.log("[printFit] scale:", scale);
+  if (!Number.isFinite(scale) || scale <= 0) {
+    if (restorePrintOnlyDisplay) {
+      restorePrintOnlyDisplay();
+      restorePrintOnlyDisplay = null;
+    }
+    return;
+  }
+  scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
 
   target.style.transformOrigin = "top left";
   target.style.transform = `scale(${scale})`;

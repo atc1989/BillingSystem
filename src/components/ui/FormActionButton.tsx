@@ -23,7 +23,7 @@ export function FormActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={`btn-pill ${className}`.trim()}
+      className={["btn-pill", "no-print", className].filter(Boolean).join(" ")}
     >
       {children}
     </button>

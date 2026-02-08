@@ -11,7 +11,7 @@ type EventFormsToolbarProps = {
 
 export function EventFormsToolbar({ onSave, onLoad, onClear, onPrint }: EventFormsToolbarProps) {
   return (
-    <div className="eventToolbar print:hidden flex items-center justify-end gap-2.5 w-full md:w-auto md:shrink-0">
+    <div className="form-actions no-print">
       <FormActionButton onClick={onSave} ariaLabel="Save active form">
         <Save className="w-4 h-4" />
         Save

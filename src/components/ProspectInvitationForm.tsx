@@ -15,6 +15,8 @@ type ProspectRow = {
 
 const storageKey = "eventForms.prospectInvitation";
 const defaultRowCount = 20;
+const PRINT_EMPTY_ROWS = 14;
+const MAX_ROWS_FOR_ONE_PAGE = 15;
 
 const createEmptyRow = (): ProspectRow => ({
   leaderName: "",
@@ -73,8 +75,8 @@ export function ProspectInvitationForm({
 
   const printableRows = useMemo(() => {
     const filled = rows.filter(hasRowContent);
-    if (filled.length > 0) return filled;
-    return Array.from({ length: 8 }, () => createEmptyRow());
+    if (filled.length > 0) return filled.slice(0, MAX_ROWS_FOR_ONE_PAGE);
+    return Array.from({ length: PRINT_EMPTY_ROWS }, () => createEmptyRow());
   }, [rows]);
 
   const updateRow = (index: number, key: keyof ProspectRow, value: string) => {
@@ -142,7 +144,7 @@ export function ProspectInvitationForm({
               ) : (
                 <div />
               )}
-              <div className="form-toolbar__right">
+              <div className="form-actions no-print">
                 <FormActionButton onClick={handleSave}>
                   <Save className="form-btn__icon" />
                   Save

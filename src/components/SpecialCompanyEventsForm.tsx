@@ -205,7 +205,7 @@ export function SpecialCompanyEventsForm({
               ) : (
                 <div />
               )}
-              <div className="form-toolbar__right">
+              <div className="form-actions no-print">
                 <FormActionButton onClick={handleSave}>
                   <Save className="form-btn__icon" />
                   Save
