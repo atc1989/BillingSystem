@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Printer, Save, Trash2 } from "lucide-react";
 import { FormActionButton } from "./ui/FormActionButton";
+import { applyPrintFit } from "../utils/printFit";
 import "./SpecialCompanyEventsForm.css";
 
 type ChecklistRow = {
@@ -176,6 +177,7 @@ export function SpecialCompanyEventsForm({
   };
 
   const handlePrint = () => {
+    applyPrintFit();
     window.print();
   };
 
@@ -316,8 +318,9 @@ export function SpecialCompanyEventsForm({
           </div>
 
           <div className="print-only">
-            <div className="print-root print-fullpage">
-              <div className="sce-print-paper">
+            <div className="print-fit-page">
+              <div className="print-root print-fullpage print-fit-content" data-print-fit>
+                <div className="sce-print-paper">
               <div className="sce-print-title">
                 <div>SPECIAL COMPANY EVENTS</div>
                 <div>(with speaker)</div>
@@ -368,6 +371,7 @@ export function SpecialCompanyEventsForm({
                   <span className="sce-print-value">{printText(formState.checkedByName)}</span>
                 </div>
               </div>
+                </div>
               </div>
             </div>
           </div>

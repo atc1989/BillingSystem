@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AutoGrowTextarea } from "./AutoGrowTextarea";
 import { FormActionButton } from "./ui/FormActionButton";
+import { applyPrintFit } from "../utils/printFit";
 import "./EventRequestForm.css";
 
 type EventType = "" | "meeting" | "workshop";
@@ -266,7 +267,14 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
             ) : (
               <div />
             )}
-            <FormActionButton type="button" className="erf-button" onClick={() => window.print()}>
+            <FormActionButton
+              type="button"
+              className="erf-button"
+              onClick={() => {
+                applyPrintFit();
+                window.print();
+              }}
+            >
               Print
             </FormActionButton>
           </div>
@@ -609,8 +617,9 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
           </div>
 
           <div className="print-only">
-            <div className="print-root print-fullpage">
-              <div className="print-paper">
+            <div className="print-fit-page">
+              <div className="print-root print-fullpage print-fit-content" data-print-fit>
+                <div className="print-paper">
               <header className="print-header">
                 <h1 className="print-title">EVENT REQUEST FORM</h1>
                 <p className="print-note">
@@ -710,6 +719,7 @@ export function EventRequestForm({ showBackButton = true, embedded = false, onRe
                   </section>
                 </div>
               </div>
+                </div>
               </div>
             </div>
           </div>
