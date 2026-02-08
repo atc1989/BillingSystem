@@ -2,7 +2,7 @@
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
 
   html,
@@ -30,6 +30,8 @@
     position: static !important;
     margin: 0 !important;
     width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
   }
 
   .no-print,
@@ -74,8 +76,8 @@
   }
 
   .print-root {
-    font-size: 10.5px !important;
-    line-height: 1.15 !important;
+    font-size: 11.5px !important;
+    line-height: 1.2 !important;
   }
 
   .print-root .erf-paper {
@@ -85,25 +87,25 @@
     border: 1px solid #9ca3af !important;
     box-shadow: none !important;
     border-radius: 0 !important;
-    padding: 10px !important;
+    padding: 14px !important;
   }
 
   .print-root .erf-top h1 {
-    font-size: 14px !important;
-    margin: 0 0 2px !important;
+    font-size: 16px !important;
+    margin: 0 0 4px !important;
     letter-spacing: 0.4px !important;
     line-height: 1.1 !important;
   }
 
   .print-root .erf-top p {
-    font-size: 8px !important;
+    font-size: 9px !important;
     margin: 0 !important;
     line-height: 1.2 !important;
   }
 
   .print-root .erf-top {
-    padding: 4px 0 !important;
-    margin-bottom: 6px !important;
+    padding: 5px 0 !important;
+    margin-bottom: 8px !important;
   }
 
   .print-root .erf-columns {
@@ -112,35 +114,35 @@
   }
 
   .print-root .erf-section {
-    margin-bottom: 6px !important;
+    margin-bottom: 7px !important;
   }
 
   .print-root .erf-section h2 {
-    font-size: 10.7px !important;
+    font-size: 11.5px !important;
     line-height: 1.15 !important;
-    margin: 0 0 4px !important;
+    margin: 0 0 5px !important;
   }
 
   .print-root .erf-field {
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
     gap: 2px !important;
   }
 
   .print-root .erf-label,
   .print-root .erf-choice,
   .print-root .erf-choice-group legend {
-    font-size: 9px !important;
-    line-height: 1.12 !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
   }
 
   .print-root .erf-choice-group {
-    margin: 0 0 4px !important;
+    margin: 0 0 5px !important;
   }
 
   .print-root .erf-yes-no-row,
   .print-root .erf-av-list {
-    gap: 3px !important;
-    margin-bottom: 3px !important;
+    gap: 4px !important;
+    margin-bottom: 4px !important;
   }
 
   .print-root .erf-section,
@@ -153,14 +155,14 @@
 
   .print-root .erf-lined-input,
   .print-root .erf-lined-textarea {
-    font-size: 9px !important;
-    line-height: 1.1 !important;
-    padding: 2px 1px 3px !important;
-    min-height: 16px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+    padding: 2px 1px 4px !important;
+    min-height: 18px !important;
   }
 
   .print-root .erf-lined-textarea {
-    min-height: 32px !important;
+    min-height: 36px !important;
     max-height: none !important;
     overflow: visible !important;
     height: auto !important;
@@ -174,18 +176,18 @@
 
   .print-root .erf-choice input[type="checkbox"],
   .print-root .erf-choice input[type="radio"] {
-    width: 10px !important;
-    height: 10px !important;
+    width: 11px !important;
+    height: 11px !important;
   }
 
   .print-root .erf-note-block {
-    margin-top: 6px !important;
-    padding-top: 4px !important;
+    margin-top: 7px !important;
+    padding-top: 5px !important;
   }
 
   .print-root .erf-note-block h3 {
-    font-size: 10px !important;
-    margin: 0 0 3px !important;
+    font-size: 11px !important;
+    margin: 0 0 4px !important;
   }
 
   .print-root .erf-note-block ol {
@@ -193,7 +195,7 @@
   }
 
   .print-root .erf-note-block li {
-    font-size: 8.8px !important;
-    margin-bottom: 1px !important;
+    font-size: 9.5px !important;
+    margin-bottom: 2px !important;
   }
 }
