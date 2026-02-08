@@ -1,7 +1,10 @@
 export interface PaymentBreakdown {
-  category: string;
+  payment_method: "bank_transfer" | "check" | "cash" | "other";
   description: string;
   amount: number;
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_no?: string;
 }
 
 export interface Bill {
@@ -43,8 +46,19 @@ export const mockBills: Bill[] = [
     accountHolder: "Kevlinda Empoy",
     accountNumber: "1234567890",
     breakdowns: [
-      { category: "Savings", description: "Monthly savings deposit", amount: 150000.0 },
-      { category: "Loan Assistance", description: "Emergency loan assistance", amount: 50000.0 }
+      {
+        payment_method: "bank_transfer",
+        description: "Monthly savings deposit",
+        amount: 150000.0,
+        bank_name: "BDO",
+        bank_account_name: "Kevlinda Empoy",
+        bank_account_no: "1234567890"
+      },
+      {
+        payment_method: "cash",
+        description: "Emergency loan assistance",
+        amount: 50000.0
+      }
     ],
     reasonForPayment: "Employee financial assistance for savings and emergency loan requirement.",
     attachments: ["PRF-012826-004-signed.pdf", "ID-copy.jpg"],
@@ -62,7 +76,11 @@ export const mockBills: Bill[] = [
     status: "Approved",
     requestedBy: "Maria",
     breakdowns: [
-      { category: "Other", description: "Office supplies - pens, paper, folders", amount: 15750.0 }
+      {
+        payment_method: "check",
+        description: "Office supplies - pens, paper, folders",
+        amount: 15750.0
+      }
     ],
     reasonForPayment: "Monthly office supplies replenishment for Q1 2026.",
     attachments: ["invoice-jan2026.pdf"],
@@ -86,7 +104,14 @@ export const mockBills: Bill[] = [
     accountHolder: "Tech Solutions Inc.",
     accountNumber: "9876543210",
     breakdowns: [
-      { category: "Other", description: "Annual software license renewal", amount: 85000.0 }
+      {
+        payment_method: "bank_transfer",
+        description: "Annual software license renewal",
+        amount: 85000.0,
+        bank_name: "BPI",
+        bank_account_name: "Tech Solutions Inc.",
+        bank_account_no: "9876543210"
+      }
     ],
     reasonForPayment: "Annual renewal of accounting software licenses for 10 users.",
     attachments: ["license-invoice.pdf"],
@@ -110,7 +135,14 @@ export const mockBills: Bill[] = [
     accountHolder: "Utility Company",
     accountNumber: "5555123456",
     breakdowns: [
-      { category: "Other", description: "January 2026 electricity consumption", amount: 12500.0 }
+      {
+        payment_method: "bank_transfer",
+        description: "January 2026 electricity consumption",
+        amount: 12500.0,
+        bank_name: "Metrobank",
+        bank_account_name: "Utility Company",
+        bank_account_no: "5555123456"
+      }
     ],
     reasonForPayment: "Monthly electricity bill payment for office premises.",
     attachments: [],
@@ -131,7 +163,11 @@ export const mockBills: Bill[] = [
     status: "Draft",
     requestedBy: "Kenny",
     breakdowns: [
-      { category: "Other", description: "Q1 2026 cleaning services", amount: 8000.0 }
+      {
+        payment_method: "cash",
+        description: "Q1 2026 cleaning services",
+        amount: 8000.0
+      }
     ],
     reasonForPayment: "Quarterly cleaning services for office building.",
     attachments: []

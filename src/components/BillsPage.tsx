@@ -9,7 +9,8 @@ type BillRow = {
   request_date: string;
   reference_no: string;
   vendor?: { id: string; name: string };
-  payment_method: string;
+  payment_method?: string;
+  payment_methods: string[];
   priority_level: string;
   total_amount: number;
   status: string;
@@ -111,6 +112,47 @@ export function BillsPage() {
       default:
         return priority;
     }
+  };
+
+  const formatPaymentMethod = (method: string) => {
+    switch (method) {
+      case "bank_transfer":
+        return "Bank Transfer";
+      case "check":
+        return "Check";
+      case "cash":
+        return "Cash";
+      case "other":
+        return "Other";
+      default:
+        return method;
+    }
+  };
+
+  const renderPaymentMethods = (methods: string[]) => {
+    const uniqueMethods = Array.from(new Set(methods.filter(Boolean)));
+    const labels = uniqueMethods.map(formatPaymentMethod);
+    const visible = labels.slice(0, 2);
+    const extra = labels.length - visible.length;
+
+    return (
+      <div className="flex flex-wrap gap-2" title={labels.join(", ")}>
+        {visible.map((label) => (
+          <span
+            key={label}
+            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+          >
+            {label}
+          </span>
+        ))}
+        {extra > 0 && (
+          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+            +{extra}
+          </span>
+        )}
+        {labels.length === 0 && <span className="text-sm text-gray-500">—</span>}
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -328,7 +370,13 @@ export function BillsPage() {
                           {bill.remarks || "—"}
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-900">
-                          {bill.payment_method}
+                          {renderPaymentMethods(
+                            bill.payment_methods?.length
+                              ? bill.payment_methods
+                              : bill.payment_method
+                              ? [bill.payment_method]
+                              : []
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <span

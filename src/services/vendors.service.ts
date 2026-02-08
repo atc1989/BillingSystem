@@ -1,5 +1,14 @@
 import { supabase } from "../lib/supabaseClient";
 import type { Vendor } from "../types/billing";
+import type { PostgrestError } from "@supabase/supabase-js";
+
+function mapVendorError(error: PostgrestError | null | undefined, fallback: string) {
+  if (!error) return fallback;
+  if (error.code === "42501") {
+    return "You do not have permission to manage vendors.";
+  }
+  return error.message || fallback;
+}
 
 export async function listVendors(query?: string) {
   let request = supabase.from("vendors").select("id,name,address").order("name");
@@ -11,7 +20,7 @@ export async function listVendors(query?: string) {
   const { data, error } = await request.limit(50);
 
   if (error) {
-    return { data: [] as Vendor[], error: error.message };
+    return { data: [] as Vendor[], error: mapVendorError(error, "Failed to load vendors.") };
   }
 
   return { data: (data ?? []) as Vendor[], error: null as string | null };
@@ -30,7 +39,7 @@ export async function createVendor(name: string, address?: string | null) {
     .single();
 
   if (error) {
-    return { data: null as Vendor | null, error: error.message };
+    return { data: null as Vendor | null, error: mapVendorError(error, "Failed to create vendor.") };
   }
 
   return { data: data as Vendor, error: null as string | null };

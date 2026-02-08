@@ -354,37 +354,7 @@ export function ViewBillPage() {
               </div>
             </div>
 
-            {/* SECTION 2 — Payment Method */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="text-sm font-medium text-gray-500 mb-1">Payment Method</div>
-                  <div className="text-base text-gray-900">{formatPaymentMethod(bill.payment_method)}</div>
-                </div>
-
-                {bill.payment_method === "bank_transfer" && (
-                  <>
-                    <div>
-                      <div className="text-sm font-medium text-gray-500 mb-1">Bank Name</div>
-                      <div className="text-base text-gray-900">{bill.bank_name || "—"}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-500 mb-1">Account Holder Name</div>
-                      <div className="text-base text-gray-900">{bill.bank_account_name || "—"}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-500 mb-1">Bank Account Number</div>
-                      <div className="text-base text-gray-900 font-mono">
-                        {bill.bank_account_no ? maskAccountNumber(bill.bank_account_no) : "—"}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* SECTION 3 — Payment Breakdown */}
+            {/* SECTION 2 -- Payment Breakdown */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Breakdown</h2>
 
@@ -393,7 +363,7 @@ export function ViewBillPage() {
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                        Category
+                        Payment Method
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Description
@@ -405,18 +375,52 @@ export function ViewBillPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {breakdowns.map((breakdown, index) => (
-                      <tr key={breakdown.id || index}>
-                        <td className="px-4 py-3 text-sm text-gray-900">{breakdown.category}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {breakdown.description || "—"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                          ₱{Number(breakdown.amount).toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </td>
-                      </tr>
+                      <React.Fragment key={breakdown.id || index}>
+                        <tr>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {formatPaymentMethod(breakdown.payment_method)}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {breakdown.description || "—"}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
+                            ₱{Number(breakdown.amount).toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2
+                            })}
+                          </td>
+                        </tr>
+                        {breakdown.payment_method === "bank_transfer" && (
+                          <tr>
+                            <td colSpan={3} className="px-4 pb-4">
+                              <div className="mt-4 pt-4 border-t border-gray-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-500 mb-1">Bank Name</div>
+                                    <div className="text-base text-gray-900">
+                                      {breakdown.bank_name || "—"}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-500 mb-1">Account Holder Name</div>
+                                    <div className="text-base text-gray-900">
+                                      {breakdown.bank_account_name || "—"}
+                                    </div>
+                                  </div>
+                                  <div className="md:col-span-2">
+                                    <div className="text-sm font-medium text-gray-500 mb-1">Bank Account Number</div>
+                                    <div className="text-base text-gray-900 font-mono">
+                                      {breakdown.bank_account_no
+                                        ? maskAccountNumber(breakdown.bank_account_no)
+                                        : "—"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -436,7 +440,7 @@ export function ViewBillPage() {
               </div>
             </div>
 
-            {/* SECTION 4 — Reason for Payment */}
+            {/* SECTION 3 -- Reason for Payment */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Reason for Payment</h2>
               <div className="bg-gray-50 rounded-md p-4 border border-gray-200">
@@ -446,13 +450,13 @@ export function ViewBillPage() {
               </div>
             </div>
 
-            {/* SECTION 5 — Attachments */}
+            {/* SECTION 4 -- Attachments */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Attachments</h2>
               <p className="text-sm text-gray-500">No attachments</p>
             </div>
 
-            {/* SECTION 6 — Request & Approval Info */}
+            {/* SECTION 5 -- Request & Approval Info */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Request & Approval Info</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
