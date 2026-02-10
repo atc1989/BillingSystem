@@ -47,7 +47,7 @@ export async function listBills(params: ListBillsParams) {
       created_by,
       created_at,
       updated_at,
-      vendor:vendors(id,name,address)
+      vendor:vendors!inner(id,name,address)
     `,
       { count: "exact" }
     )
@@ -79,7 +79,12 @@ export async function listBills(params: ListBillsParams) {
     return { data: [], count: 0, error: error.message };
   }
 
-  const bills = (data ?? []) as Array<Bill & { vendor?: { id: string; name: string } }>;
+  const bills = (data ?? []) as unknown as Array<Bill & { vendor?: { id: string; name: string } }>;
+  bills.forEach((bill) => {
+    if (Array.isArray(bill.vendor)) {
+      bill.vendor = bill.vendor[0];
+    }
+  });
 
   if (bills.length === 0) {
     return {
@@ -196,17 +201,8 @@ export async function getBillById(id: string) {
       created_by,
       created_at,
       updated_at,
-      vendor:vendors(id,name,address),
-      breakdowns:bill_breakdowns(
-        id,
-        bill_id,
-        payment_method,
-        description,
-        amount,
-        bank_name,
-        bank_account_name,
-        bank_account_no
-      )
+      vendor:vendors!inner(id,name,address),
+      breakdowns:bill_breakdowns(id,bill_id,payment_method,description,amount,bank_name,bank_account_name,bank_account_no)
     `
     )
     .eq("id", id)
@@ -235,7 +231,7 @@ export async function getBillById(id: string) {
         created_at: data.created_at,
         updated_at: data.updated_at
       },
-      vendor: data.vendor,
+      vendor: Array.isArray(data.vendor) ? data.vendor[0] : data.vendor,
       breakdowns: data.breakdowns ?? []
     } as BillDetails,
     error: null as string | null
