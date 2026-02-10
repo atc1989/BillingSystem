@@ -5,6 +5,8 @@ import { ApproveRejectModal } from "./ApproveRejectModal";
 import { ChevronRight, Printer, Download, Edit2 } from "lucide-react";
 import { getBillById, updateBillStatus } from "../services/bills.service";
 import type { BillDetails } from "../types/billing";
+import { buildReceiptHtml } from "../print/receiptTemplate";
+import { printReceipt } from "../print/printReceipt";
 
 export function ViewBillPage() {
   const { id } = useParams();
@@ -219,11 +221,32 @@ export function ViewBillPage() {
     navigate(`/bills/${bill.id}/edit`);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const totalAmount = breakdowns.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+  const resolvedTotalAmount = Number(bill?.total_amount ?? 0) > 0 ? Number(bill?.total_amount ?? 0) : totalAmount;
+
+  const handlePrint = () => {
+    if (!bill || !vendor) return;
+
+    const receiptHtml = buildReceiptHtml({
+      reference_no: bill.reference_no,
+      request_date: bill.request_date,
+      status: bill.status,
+      vendor_name: vendor.name,
+      requester_name: bill.created_by,
+      breakdowns: breakdowns.map((breakdown) => ({
+        description: breakdown.description,
+        amount: breakdown.amount,
+        payment_method: breakdown.payment_method,
+        bank_name: breakdown.bank_name,
+        bank_account_name: breakdown.bank_account_name,
+        bank_account_no: breakdown.bank_account_no
+      })),
+      total_amount: resolvedTotalAmount,
+      remarks: bill.remarks
+    });
+
+    printReceipt(receiptHtml);
+  };
 
   if (isLoading) {
     return (
@@ -286,6 +309,7 @@ export function ViewBillPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handlePrint}
+                disabled={!billDetails}
                 className="p-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                 title="Print"
               >
