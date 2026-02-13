@@ -258,10 +258,11 @@ export function CreateBillPage() {
       const attachmentResult = await uploadBillAttachments(result.data.id, attachments, user.id);
       if (attachmentResult.error) {
         setIsSaving(false);
-        setErrorMessage(
-          `Bill created, but attachment upload failed: ${attachmentResult.error}`
-        );
-        navigate(`/bills/${result.data.id}`);
+        navigate(`/bills/${result.data.id}`, {
+          state: {
+            attachmentError: `Bill created, but attachment upload failed: ${attachmentResult.error}`
+          }
+        });
         return;
       }
     }

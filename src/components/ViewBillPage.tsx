@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { VoidBillModal } from "./VoidBillModal";
 import { ApproveRejectModal } from "./ApproveRejectModal";
 import { ChevronRight, Printer, Download, Edit2 } from "lucide-react";
@@ -20,6 +20,7 @@ import { downloadBillAttachment } from "../services/billAttachments.service";
 export function ViewBillPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [billDetails, setBillDetails] = useState<BillDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +67,14 @@ export function ViewBillPage() {
       isMounted = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    const state = location.state as { attachmentError?: string } | null;
+    if (state?.attachmentError) {
+      setActionError(state.attachmentError);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   const bill = billDetails?.bill;
   const vendor = billDetails?.vendor;

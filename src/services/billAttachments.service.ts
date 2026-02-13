@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabaseClient";
 import type { BillAttachment } from "../types/billing";
 
 const ATTACHMENTS_BUCKET =
-  import.meta.env.VITE_SUPABASE_BILL_ATTACHMENTS_BUCKET || "bill-attachments";
+  import.meta.env.VITE_SUPABASE_BILL_ATTACHMENTS_BUCKET || "bill_attachments";
 
 interface ServiceResult<T> {
   data: T;
@@ -48,9 +48,13 @@ export async function uploadBillAttachments(
       if (uploadedPaths.length > 0) {
         await supabase.storage.from(ATTACHMENTS_BUCKET).remove(uploadedPaths);
       }
+      const uploadMessage =
+        uploadError.message === "Bucket not found"
+          ? `Storage bucket '${ATTACHMENTS_BUCKET}' not found. Create it in Supabase Storage first.`
+          : uploadError.message || "Failed to upload one or more attachments.";
       return {
         data: [],
-        error: uploadError.message || "Failed to upload one or more attachments."
+        error: uploadMessage
       };
     }
 
