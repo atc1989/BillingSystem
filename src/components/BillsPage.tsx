@@ -35,7 +35,7 @@ export function BillsPage() {
   const currentUserDisplayName = getUserDisplayName(user);
   const navigate = useNavigate();
 
-  const tabs = ["All", "Draft", "Awaiting Approval", "Approved", "Paid", "Void"];
+  const tabs = ["All", "Draft", "Awaiting Approval", "Rejected", "Approved", "Paid", "Void"];
 
   const statusFilter = useMemo<BillStatus | undefined>(() => {
     switch (activeTab) {
@@ -43,6 +43,8 @@ export function BillsPage() {
         return "draft";
       case "Awaiting Approval":
         return "awaiting_approval";
+      case "Rejected":
+        return "rejected";
       case "Approved":
         return "approved";
       case "Paid":
@@ -60,6 +62,8 @@ export function BillsPage() {
         return "bg-gray-100 text-gray-700";
       case "awaiting_approval":
         return "bg-yellow-100 text-yellow-700";
+      case "rejected":
+        return "bg-orange-100 text-orange-700";
       case "approved":
         return "bg-blue-100 text-blue-700";
       case "paid":
@@ -92,6 +96,8 @@ export function BillsPage() {
         return "Draft";
       case "awaiting_approval":
         return "Awaiting Approval";
+      case "rejected":
+        return "Rejected";
       case "approved":
         return "Approved";
       case "paid":

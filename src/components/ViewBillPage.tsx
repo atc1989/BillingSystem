@@ -87,6 +87,8 @@ export function ViewBillPage() {
         return "bg-gray-100 text-gray-700";
       case "awaiting_approval":
         return "bg-yellow-100 text-yellow-700";
+      case "rejected":
+        return "bg-orange-100 text-orange-700";
       case "approved":
         return "bg-blue-100 text-blue-700";
       case "paid":
@@ -119,6 +121,8 @@ export function ViewBillPage() {
         return "Draft";
       case "awaiting_approval":
         return "Awaiting Approval";
+      case "rejected":
+        return "Rejected";
       case "approved":
         return "Approved";
       case "paid":
@@ -173,14 +177,18 @@ export function ViewBillPage() {
     setApproveRejectModal({ isOpen: true, action: "reject" });
   };
 
-  const handleConfirmApproveReject = async (_notes: string) => {
+  const handleConfirmApproveReject = async (notes: string) => {
     if (!bill) return;
     if (isUpdatingStatus) return;
 
-    const nextStatus = approveRejectModal.action === "approve" ? "approved" : "draft";
+    const nextStatus = approveRejectModal.action === "approve" ? "approved" : "rejected";
     setActionError(null);
     setIsUpdatingStatus(true);
-    const result = await updateBillStatus(bill.id, nextStatus);
+    const result = await updateBillStatus(
+      bill.id,
+      nextStatus,
+      approveRejectModal.action === "reject" ? notes : null
+    );
     setIsUpdatingStatus(false);
 
     if (result.error) {
@@ -189,7 +197,16 @@ export function ViewBillPage() {
     }
 
     setBillDetails((prev) =>
-      prev ? { ...prev, bill: { ...prev.bill, status: nextStatus } } : prev
+      prev
+        ? {
+            ...prev,
+            bill: {
+              ...prev.bill,
+              status: nextStatus,
+              rejection_reason: nextStatus === "rejected" ? notes.trim() : null
+            }
+          }
+        : prev
     );
     setApproveRejectModal({ isOpen: false, action: "approve" });
   };
@@ -569,6 +586,17 @@ export function ViewBillPage() {
                 </p>
               </div>
             </div>
+
+            {bill.status === "rejected" && bill.rejection_reason && (
+              <div className="bg-white rounded-lg border border-orange-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Rejection Reason</h2>
+                <div className="bg-orange-50 rounded-md p-4 border border-orange-200">
+                  <p className="text-sm text-orange-900 whitespace-pre-wrap">
+                    {bill.rejection_reason}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* SECTION 4 -- Attachments */}
             <div className="bg-white rounded-lg border border-gray-200 p-6">

@@ -64,7 +64,8 @@ export function EditBillPage() {
         return "Other";
     }
   };
-  const canEdit = billStatus === "draft" || billStatus === "awaiting_approval";
+  const canEdit =
+    billStatus === "draft" || billStatus === "awaiting_approval" || billStatus === "rejected";
   const isDuplicatePrfError = (error: string | ServiceError | null | undefined) =>
     typeof error === "object" && error?.code === "DUPLICATE_PRF";
   useEffect(() => {
@@ -155,6 +156,8 @@ export function EditBillPage() {
         return "bg-gray-100 text-gray-700";
       case "awaiting_approval":
         return "bg-yellow-100 text-yellow-700";
+      case "rejected":
+        return "bg-orange-100 text-orange-700";
       case "approved":
         return "bg-blue-100 text-blue-700";
       case "paid":
@@ -171,6 +174,8 @@ export function EditBillPage() {
         return "Draft";
       case "awaiting_approval":
         return "Awaiting Approval";
+      case "rejected":
+        return "Rejected";
       case "approved":
         return "Approved";
       case "paid":

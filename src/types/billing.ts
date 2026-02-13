@@ -1,6 +1,7 @@
 export type BillStatus =
   | "draft"
   | "awaiting_approval"
+  | "rejected"
   | "approved"
   | "paid"
   | "void";
@@ -27,6 +28,7 @@ export interface Bill {
   bank_account_no?: string | null;
   status: BillStatus;
   remarks?: string | null;
+  rejection_reason?: string | null;
   total_amount: number;
   created_by: string;
   created_at?: string;

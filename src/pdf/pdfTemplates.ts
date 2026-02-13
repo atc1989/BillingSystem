@@ -64,6 +64,8 @@ function formatStatus(value?: string | null): string {
       return "Draft";
     case "awaiting_approval":
       return "Awaiting Approval";
+    case "rejected":
+      return "Rejected";
     case "approved":
       return "Approved";
     case "paid":

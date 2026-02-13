@@ -43,6 +43,7 @@ export async function listBills(params: ListBillsParams) {
       bank_account_no,
       status,
       remarks,
+      rejection_reason,
       total_amount,
       created_by,
       created_at,
@@ -218,6 +219,7 @@ export async function getBillById(id: string) {
       bank_account_no,
       status,
       remarks,
+      rejection_reason,
       total_amount,
       created_by,
       created_at,
@@ -257,6 +259,7 @@ export async function getBillById(id: string) {
         bank_account_no: data.bank_account_no,
         status: data.status,
         remarks: data.remarks,
+        rejection_reason: data.rejection_reason,
         total_amount: data.total_amount,
         created_by: data.created_by,
         created_at: data.created_at,
@@ -306,6 +309,7 @@ export async function createBill(payload: CreateBillPayload) {
       bank_account_no,
       status,
       remarks,
+      rejection_reason,
       total_amount,
       created_by,
       created_at,
@@ -375,6 +379,7 @@ export async function updateBill(id: string, payload: UpdateBillPayload) {
       bank_account_no,
       status,
       remarks,
+      rejection_reason,
       total_amount,
       created_by,
       created_at,
@@ -422,10 +427,16 @@ export async function updateBill(id: string, payload: UpdateBillPayload) {
   return { data: updated as Bill, error: null as string | null };
 }
 
-export async function updateBillStatus(id: string, status: BillStatus) {
+export async function updateBillStatus(id: string, status: BillStatus, rejectionReason?: string | null) {
+  const trimmedReason = (rejectionReason || "").trim();
+  const updatePayload = {
+    status,
+    rejection_reason: status === "rejected" ? trimmedReason || null : null
+  };
+
   const { data, error } = await supabase
     .from("bills")
-    .update({ status })
+    .update(updatePayload)
     .eq("id", id)
     .select(
       `
@@ -440,6 +451,7 @@ export async function updateBillStatus(id: string, status: BillStatus) {
       bank_account_no,
       status,
       remarks,
+      rejection_reason,
       total_amount,
       created_by,
       created_at,
