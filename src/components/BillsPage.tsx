@@ -210,6 +210,21 @@ export function BillsPage() {
   }, [statusFilter, searchQuery, dateFrom, dateTo, page, pageSize]);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = totalCount === 0 ? 0 : Math.min(totalCount, (page - 1) * pageSize + bills.length);
+
+  const pageWindow = 5;
+  const halfWindow = Math.floor(pageWindow / 2);
+  let windowStart = Math.max(1, page - halfWindow);
+  let windowEnd = Math.min(totalPages, windowStart + pageWindow - 1);
+  if (windowEnd - windowStart + 1 < pageWindow) {
+    windowStart = Math.max(1, windowEnd - pageWindow + 1);
+  }
+
+  const visiblePages: number[] = [];
+  for (let p = windowStart; p <= windowEnd; p += 1) {
+    visiblePages.push(p);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -436,7 +451,7 @@ export function BillsPage() {
               {/* Pagination */}
               <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
                 <div className="text-sm text-gray-600">
-                  Showing {bills.length} of {totalCount} results
+                  Showing {startItem}-{endItem} of {totalCount} results
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -446,9 +461,51 @@ export function BillsPage() {
                   >
                     Previous
                   </button>
-                  <button className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm">
-                    {page}
-                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {windowStart > 1 && (
+                      <>
+                        <button
+                          onClick={() => setPage(1)}
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          1
+                        </button>
+                        {windowStart > 2 && (
+                          <span className="px-2 text-sm text-gray-500">...</span>
+                        )}
+                      </>
+                    )}
+
+                    {visiblePages.map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`px-3 py-1 rounded-md text-sm ${
+                          p === page
+                            ? "bg-blue-600 text-white"
+                            : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    {windowEnd < totalPages && (
+                      <>
+                        {windowEnd < totalPages - 1 && (
+                          <span className="px-2 text-sm text-gray-500">...</span>
+                        )}
+                        <button
+                          onClick={() => setPage(totalPages)}
+                          className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {totalPages}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                   <button
                     onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                     disabled={page >= totalPages}
