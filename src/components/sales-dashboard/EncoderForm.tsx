@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { FormField } from "./form-field";
 import { FormSelect } from "./form-select";
+import type { SaleEntry } from "../../types/sales";
 
 type EncoderFormState = {
   event: string;
@@ -68,7 +69,11 @@ const INITIAL_FORM: EncoderFormState = {
   collectedBy: ""
 };
 
-export function EncoderForm() {
+type EncoderFormProps = {
+  onSave?: (entry: SaleEntry) => void;
+};
+
+export function EncoderForm({ onSave = () => {} }: EncoderFormProps) {
   const [formData, setFormData] = useState<EncoderFormState>(INITIAL_FORM);
 
   const update = (field: keyof EncoderFormState, value: string) =>
@@ -90,6 +95,20 @@ export function EncoderForm() {
     ],
     []
   );
+
+  const handleSave = () => {
+    onSave({
+      date: formData.date,
+      memberName: formData.memberName,
+      totalSales: formData.totalSales,
+      modeOfPayment: formData.modeOfPayment,
+      remarks: formData.remarks
+    });
+  };
+
+  const handleClear = () => {
+    setFormData(INITIAL_FORM);
+  };
 
   return (
     <div className="rounded-lg bg-white p-8 shadow-sm">
@@ -213,10 +232,10 @@ export function EncoderForm() {
       </div>
 
       <div className="flex gap-3 pt-4">
-        <button type="button" className="h-11 rounded-lg bg-green-500 px-6 text-white hover:bg-green-600">
+        <button type="button" onClick={handleSave} className="h-11 rounded-lg bg-green-500 px-6 text-white hover:bg-green-600">
           Save Entry
         </button>
-        <button type="button" className="h-11 rounded-lg bg-red-500 px-6 text-white hover:bg-red-600">
+        <button type="button" onClick={handleClear} className="h-11 rounded-lg bg-red-500 px-6 text-white hover:bg-red-600">
           Clear Form
         </button>
       </div>
