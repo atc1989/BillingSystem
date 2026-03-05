@@ -1,4 +1,5 @@
 import React from "react";
+import type { SaleEntry } from "../types/sales";
 
 const packageRows = [
   { package: "Platinum", qty: 2, price: "35,000.00", amount: "70,000.00" },
@@ -15,9 +16,17 @@ const paymentRows = [
   { label: "Cheque", amount: "0.00" }
 ];
 
-export function SalesDashboardSalesReportPage() {
+type SalesDashboardSalesReportPageProps = {
+  salesEntries: SaleEntry[];
+};
+
+export function SalesDashboardSalesReportPage({ salesEntries }: SalesDashboardSalesReportPageProps) {
   return (
-    <div className="rounded-lg border border-gray-300 bg-white p-4" style={{ fontFamily: "Arial, sans-serif", fontSize: "11px" }}>
+    <div
+      className="rounded-lg border border-gray-300 bg-white p-4"
+      style={{ fontFamily: "Arial, sans-serif", fontSize: "11px" }}
+      data-sales-entries={salesEntries.length}
+    >
       <div className="mb-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <span>Report Date:</span>
