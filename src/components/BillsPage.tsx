@@ -4,6 +4,7 @@ import { Search, Plus, FileText } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getUserDisplayName } from "../auth/userDisplayName";
 import { listBills } from "../services/bills.service";
+import { BillsExportButtons } from "./bills/BillsExportButtons";
 import type { BillStatus } from "../types/billing";
 
 type BillRow = {
@@ -236,13 +237,21 @@ export function BillsPage() {
               <h1 className="text-2xl font-semibold text-gray-900">Payment Requests</h1>
               <p className="text-gray-600 mt-1">View and manage payment requests</p>
             </div>
-            <button
-              onClick={() => navigate("/bills/new")}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              New Bill
-            </button>
+            <div className="flex items-center gap-2">
+              <BillsExportButtons
+                activeTab={activeTab}
+                searchQuery={searchQuery}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+              />
+              <button
+                onClick={() => navigate("/bills/new")}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                New Bill
+              </button>
+            </div>
           </div>
 
           {/* Status Tabs */}
