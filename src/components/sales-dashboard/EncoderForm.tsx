@@ -209,6 +209,10 @@ function mapSaveErrorToMessage(error: unknown): string {
     return "Unable to save entry. You do not have permission to perform this action.";
   }
 
+  if (saveError.code === "PGRST204") {
+    return "Unable to save entry due to a database schema mismatch. Please contact the administrator.";
+  }
+
   if (saveError.message && /network|fetch|failed to fetch/i.test(saveError.message)) {
     return "Unable to save entry due to a network/configuration issue. Please try again.";
   }

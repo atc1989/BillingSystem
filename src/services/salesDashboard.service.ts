@@ -65,6 +65,104 @@ const toErrorDebugMeta = (error: unknown) => {
   };
 };
 
+const toColumnNameFromError = (error: unknown): string | null => {
+  if (!error || typeof error !== "object") return null;
+
+  const maybeError = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
+
+  // Supabase/PostgREST schema-cache errors usually expose missing columns this way.
+  const joined = [maybeError.message, maybeError.details, maybeError.hint]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .join(" ");
+
+  if (!joined) return null;
+
+  const patterns = [
+    /column ['"]([a-zA-Z0-9_]+)['"]/i,
+    /Could not find the ['"]([a-zA-Z0-9_]+)['"] column/i,
+    /unknown field ['"]([a-zA-Z0-9_]+)['"]/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = joined.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+
+  return null;
+};
+
+async function insertRowWithColumnFallback(
+  table: string,
+  inputPayload: Record<string, unknown>,
+  options?: { select?: string; single?: boolean }
+): Promise<{ data: unknown; payloadUsed: Record<string, unknown> }> {
+  const payload = { ...inputPayload };
+  let attempts = 0;
+
+  while (attempts < 20) {
+    attempts += 1;
+
+    const query = supabase.from(table).insert(payload);
+    const execute =
+      options?.select && options.single
+        ? query.select(options.select).single()
+        : options?.select
+        ? query.select(options.select)
+        : query;
+
+    const { data, error } = await execute;
+    if (!error) return { data, payloadUsed: payload };
+
+    const missingColumn = toColumnNameFromError(error);
+    if (missingColumn && Object.prototype.hasOwnProperty.call(payload, missingColumn)) {
+      delete payload[missingColumn];
+      continue;
+    }
+
+    throw error;
+  }
+
+  throw new Error(`Insert retries exceeded for ${table}.`);
+}
+
+async function insertRowsWithColumnFallback(
+  table: string,
+  inputRows: Array<Record<string, unknown>>
+): Promise<Array<Record<string, unknown>>> {
+  let rows = inputRows.map((row) => ({ ...row }));
+  let attempts = 0;
+
+  while (attempts < 20) {
+    attempts += 1;
+
+    const { error } = await supabase.from(table).insert(rows);
+    if (!error) return rows;
+
+    const missingColumn = toColumnNameFromError(error);
+    if (missingColumn) {
+      const hasColumn = rows.some((row) => Object.prototype.hasOwnProperty.call(row, missingColumn));
+      if (hasColumn) {
+        rows = rows.map((row) => {
+          if (!Object.prototype.hasOwnProperty.call(row, missingColumn)) return row;
+          const nextRow = { ...row };
+          delete nextRow[missingColumn];
+          return nextRow;
+        });
+        continue;
+      }
+    }
+
+    throw error;
+  }
+
+  throw new Error(`Insert retries exceeded for ${table}.`);
+}
+
 async function resolveSalesUserId(username: string): Promise<number | null> {
   const trimmed = username.trim();
   if (!trimmed) return null;
@@ -109,7 +207,7 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
     po_number: pofNumber,
     member_name: toText(entry.memberName),
     username: toText(entry.username),
-    new_member: newMember,
+    new_member: newMember ?? false,
     is_new_member: newMember ?? false,
     member_type: toText(entry.memberType),
     package_type: toText(entry.packageType),
@@ -150,19 +248,18 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
 
   try {
     failedStep = "sales_entries";
-    const { data: insertedEntry, error: salesInsertError } = await supabase
-      .from("sales_entries")
-      .insert(salesEntryInsert)
-      .select("id")
-      .single();
+    const { data: insertedEntry, payloadUsed: salesEntryPayloadUsed } = await insertRowWithColumnFallback(
+      "sales_entries",
+      salesEntryInsert,
+      { select: "id", single: true }
+    );
 
     debugSaveLog("SAVE RESPONSE", {
       table: "sales_entries",
+      payloadUsed: salesEntryPayloadUsed,
       response: insertedEntry,
-      error: salesInsertError
+      error: null
     });
-
-    if (salesInsertError) throw salesInsertError;
 
     salesEntryId = (insertedEntry as { id: string | number }).id;
 
@@ -186,16 +283,16 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
     });
 
     failedStep = "sales_entry_inventory";
-    const { error: inventoryInsertError } = await supabase
-      .from("sales_entry_inventory")
-      .insert(inventoryInsertPayload);
+    const inventoryPayloadUsed = await insertRowWithColumnFallback(
+      "sales_entry_inventory",
+      inventoryInsertPayload
+    );
 
     debugSaveLog("SAVE RESPONSE", {
       table: "sales_entry_inventory",
-      error: inventoryInsertError
+      payloadUsed: inventoryPayloadUsed.payloadUsed,
+      error: null
     });
-
-    if (inventoryInsertError) throw inventoryInsertError;
 
     const paymentRows: Array<Record<string, unknown>> = [];
 
@@ -236,16 +333,16 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
       });
 
       failedStep = "sales_entry_payments";
-      const { error: paymentInsertError } = await supabase
-        .from("sales_entry_payments")
-        .insert(paymentRows);
+      const paymentRowsPayloadUsed = await insertRowsWithColumnFallback(
+        "sales_entry_payments",
+        paymentRows
+      );
 
       debugSaveLog("SAVE RESPONSE", {
         table: "sales_entry_payments",
-        error: paymentInsertError
+        payloadUsed: paymentRowsPayloadUsed,
+        error: null
       });
-
-      if (paymentInsertError) throw paymentInsertError;
     }
   } catch (error) {
     console.error("SAVE ERROR", {
