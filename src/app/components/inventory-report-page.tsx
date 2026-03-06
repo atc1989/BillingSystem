@@ -50,6 +50,19 @@ const pickNumber = (row: SalesDashboardRawRow, keys: string[]): number => {
   return 0;
 };
 
+const toNormalizedText = (value: string): string => value.trim().toLowerCase();
+
+const inferCount = (row: SalesDashboardRawRow, preferredKeys: string[] = []): number => {
+  const preferred = pickNumber(row, preferredKeys);
+  if (preferred > 0) return preferred;
+
+  const generic = pickNumber(row, ["quantity", "qty", "package_qty", "count"]);
+  if (generic > 0) return generic;
+
+  // Fallback for rows where only the selected type label exists.
+  return 1;
+};
+
 const toLocalDateKey = (value: string): string => {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -79,21 +92,63 @@ const isRowForDate = (row: SalesDashboardRawRow, reportDate: string): boolean =>
   return rowDate === reportDate;
 };
 
+const mapPackageColumns = (row: SalesDashboardRawRow): InventoryItem["packageType"] => {
+  const direct = {
+    plat: pickNumber(row, ["package_platinum", "package_plat", "plat", "platinum_qty"]),
+    gold: pickNumber(row, ["package_gold", "gold", "gold_qty"]),
+    silver: pickNumber(row, ["package_silver", "silver", "silver_qty"])
+  };
+
+  if (direct.plat > 0 || direct.gold > 0 || direct.silver > 0) {
+    return direct;
+  }
+
+  const packageType = toNormalizedText(pickString(row, ["package_type"], ""));
+  if (!packageType) return direct;
+
+  if (packageType.includes("platinum") || packageType.includes("plat")) {
+    direct.plat = inferCount(row, ["package_quantity", "quantity", "qty"]);
+  } else if (packageType.includes("gold")) {
+    direct.gold = inferCount(row, ["package_quantity", "quantity", "qty"]);
+  } else if (packageType.includes("silver")) {
+    direct.silver = inferCount(row, ["package_quantity", "quantity", "qty"]);
+  }
+
+  return direct;
+};
+
+const mapRetailColumns = (row: SalesDashboardRawRow): InventoryItem["retail"] => {
+  const mapped = {
+    bottle: pickNumber(row, ["retail_bottles", "retail_bottle", "bottle", "retail_bottle_qty"]),
+    blister: pickNumber(row, ["retail_blisters", "retail_blister", "blister", "retail_blister_qty"]),
+    voucher: pickNumber(row, ["retail_vouchers", "retail_voucher", "voucher", "voucher_qty"]),
+    discount: pickNumber(row, ["retail_discounts", "retail_discount", "discount", "discount_qty"])
+  };
+
+  const packageType = toNormalizedText(pickString(row, ["package_type"], ""));
+
+  if (mapped.bottle === 0 && packageType.includes("retail")) {
+    mapped.bottle = inferCount(row, ["retail_bottles", "quantity", "qty"]);
+  }
+  if (mapped.blister === 0 && packageType.includes("blister")) {
+    mapped.blister = inferCount(row, ["retail_blisters", "blister_count", "quantity", "qty"]);
+  }
+  if (mapped.voucher === 0 && packageType.includes("voucher")) {
+    mapped.voucher = inferCount(row, ["retail_vouchers", "quantity", "qty"]);
+  }
+  if (mapped.discount === 0 && packageType.includes("discount")) {
+    mapped.discount = inferCount(row, ["retail_discounts", "discount_qty", "quantity", "qty"]);
+  }
+
+  return mapped;
+};
+
 const mapRowToInventoryItem = (row: SalesDashboardRawRow): InventoryItem => ({
   name: pickString(row, ["member_name", "name", "full_name"]),
   ggTrans: pickString(row, ["gg_trans_no", "gg_trans", "gg_transaction_no", "gg_transaction"]),
   pofNumber: pickString(row, ["pof_number", "pgf_number", "pof", "pgf"]),
-  packageType: {
-    plat: pickNumber(row, ["package_plat", "plat", "package_platinum", "platinum_qty"]),
-    gold: pickNumber(row, ["package_gold", "gold", "gold_qty"]),
-    silver: pickNumber(row, ["package_silver", "silver", "silver_qty"])
-  },
-  retail: {
-    bottle: pickNumber(row, ["retail_bottle", "bottle", "retail_bottle_qty"]),
-    blister: pickNumber(row, ["retail_blister", "blister", "retail_blister_qty"]),
-    voucher: pickNumber(row, ["retail_voucher", "voucher"]),
-    discount: pickNumber(row, ["retail_discount", "discount"])
-  },
+  packageType: mapPackageColumns(row),
+  retail: mapRetailColumns(row),
   bottles: pickNumber(row, ["bottles", "total_bottles"]),
   blisters: pickNumber(row, ["blisters", "total_blisters"]),
   released: {
