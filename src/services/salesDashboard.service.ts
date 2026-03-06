@@ -287,6 +287,12 @@ export async function fetchSalesReportRows(): Promise<SalesDashboardRawRow[]> {
   return (data as SalesDashboardRawRow[] | null) ?? [];
 }
 
+export async function fetchDailyCashCountRows(): Promise<SalesDashboardRawRow[]> {
+  const { data, error } = await supabase.from("v_daily_cash_count").select("*");
+  if (error) throw error;
+  return (data as SalesDashboardRawRow[] | null) ?? [];
+}
+
 async function fetchDetailRows(
   viewName: "v_bank_transfer_details" | "v_maya_details" | "v_gcash_details"
 ): Promise<SalesDashboardRawRow[]> {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchBankTransferDetails,
+  fetchDailyCashCountRows,
   fetchGcashDetails,
   fetchMayaDetails,
   fetchSalesReportRows,
@@ -26,7 +27,15 @@ type DetailRow = {
   amount: number;
 };
 
-const DATE_KEYS = ["report_date", "entry_date", "date", "transaction_date", "created_at"];
+type CashDenominationRow = {
+  label: string;
+  pieces: number;
+  amount: number;
+};
+
+type CashBreakdownMap = Record<string, { pieces: number; amount: number }>;
+
+const DATE_KEYS = ["report_date", "cash_date", "entry_date", "date", "transaction_date", "created_at"];
 const isSalesReportDebugEnabled =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG_SALES_REPORT === "true";
 
@@ -93,6 +102,67 @@ const hasMetricKeys = (rows: SalesDashboardRawRow[], keys: string[]): boolean =>
 
 const sumByKeys = (rows: SalesDashboardRawRow[], keys: string[]): number =>
   rows.reduce((sum, row) => sum + pickNumber(row, keys), 0);
+
+const buildEmptyCashBreakdown = (): CashBreakdownMap =>
+  Object.fromEntries(
+    DENOMINATIONS.map((denom) => [String(denom === 0.25 ? 0.25 : denom), { pieces: 0, amount: 0 }])
+  );
+
+const pickLatestCashCountRows = (rows: SalesDashboardRawRow[]): SalesDashboardRawRow[] => {
+  const grouped = new Map<string, SalesDashboardRawRow[]>();
+  rows.forEach((row) => {
+    const cashCountId = pickString(row, ["cash_count_id"], "");
+    if (!cashCountId) return;
+    const existing = grouped.get(cashCountId) ?? [];
+    existing.push(row);
+    grouped.set(cashCountId, existing);
+  });
+
+  if (grouped.size === 0) return rows;
+
+  let selectedRows: SalesDashboardRawRow[] = [];
+  let selectedTimestamp = -Infinity;
+
+  grouped.forEach((groupRows) => {
+    const latestGroupTimestamp = Math.max(
+      ...groupRows.map((row) => {
+        const rawCreatedAt = pickString(row, ["created_at"], "");
+        const parsed = Date.parse(rawCreatedAt);
+        return Number.isFinite(parsed) ? parsed : -Infinity;
+      })
+    );
+
+    if (latestGroupTimestamp > selectedTimestamp) {
+      selectedTimestamp = latestGroupTimestamp;
+      selectedRows = groupRows;
+    }
+  });
+
+  return selectedRows;
+};
+
+const mapCashBreakdown = (
+  rows: SalesDashboardRawRow[]
+): { breakdown: CashBreakdownMap; totalFromSource: number | null } => {
+  const breakdown = buildEmptyCashBreakdown();
+
+  rows.forEach((row) => {
+    const denomination = pickNumber(row, ["denomination"]);
+    const denominationKey = String(denomination === 0.25 ? 0.25 : denomination);
+    if (!Object.prototype.hasOwnProperty.call(breakdown, denominationKey)) return;
+
+    breakdown[denominationKey] = {
+      pieces: breakdown[denominationKey].pieces + pickNumber(row, ["pieces"]),
+      amount: breakdown[denominationKey].amount + pickNumber(row, ["amount"])
+    };
+  });
+
+  const totalFromSource = rows.length > 0 ? pickNumber(rows[0], ["total_cash"]) : 0;
+  return {
+    breakdown,
+    totalFromSource: totalFromSource > 0 ? totalFromSource : null
+  };
+};
 
 const mapDetailRows = (rows: SalesDashboardRawRow[]): DetailRow[] =>
   rows.map((row) => ({
@@ -246,9 +316,8 @@ export function SalesDashboardSalesReportPage() {
   const hasAutoPickedDateRef = useRef(false);
   const [preparedBy, setPreparedBy] = useState("");
   const [checkedBy, setCheckedBy] = useState("");
-  const [cashPieces, setCashPieces] = useState<Record<string, string>>(() =>
-    Object.fromEntries(DENOMINATIONS.map((denom) => [String(denom), "0"]))
-  );
+  const [cashBreakdown, setCashBreakdown] = useState<CashBreakdownMap>(() => buildEmptyCashBreakdown());
+  const [cashTotalFromSource, setCashTotalFromSource] = useState<number | null>(null);
 
   const [summaryRows, setSummaryRows] = useState<SalesDashboardRawRow[]>([]);
   const [bankRows, setBankRows] = useState<DetailRow[]>([]);
@@ -265,11 +334,12 @@ export function SalesDashboardSalesReportPage() {
         setIsLoading(true);
         setError(null);
 
-        const [summaryData, bankData, mayaData, gcashData] = await Promise.all([
+        const [summaryData, bankData, mayaData, gcashData, dailyCashCountData] = await Promise.all([
           fetchSalesReportRows(),
           fetchBankTransferDetails(),
           fetchMayaDetails(),
-          fetchGcashDetails()
+          fetchGcashDetails(),
+          fetchDailyCashCountRows()
         ]);
 
         if (!active) return;
@@ -278,6 +348,7 @@ export function SalesDashboardSalesReportPage() {
         const filteredBankRows = filterRowsForDate(bankData, reportDate);
         const filteredMayaRows = filterRowsForDate(mayaData, reportDate);
         const filteredGcashRows = filterRowsForDate(gcashData, reportDate);
+        const filteredDailyCashRows = filterRowsForDate(dailyCashCountData, reportDate);
 
         if (!hasAutoPickedDateRef.current && filteredSummaryRows.length === 0) {
           const latestReportDate = getLatestReportDate(summaryData);
@@ -292,23 +363,36 @@ export function SalesDashboardSalesReportPage() {
         setBankRows(mapDetailRows(filteredBankRows));
         setMayaRows(mapDetailRows(filteredMayaRows));
         setGcashRows(mapDetailRows(filteredGcashRows));
+        const activeCashCountRows = pickLatestCashCountRows(filteredDailyCashRows);
+        const { breakdown, totalFromSource } = mapCashBreakdown(activeCashCountRows);
+        setCashBreakdown(breakdown);
+        setCashTotalFromSource(totalFromSource);
 
         if (isSalesReportDebugEnabled) {
+          console.log("SELECTED REPORT DATE", reportDate);
+          console.log("DENOMINATION RAW DATA", dailyCashCountData);
           console.log("SALES REPORT LOAD", {
             selectedDate: reportDate,
             summaryRowsRawData: summaryData,
             bankRowsRawData: bankData,
             mayaRowsRawData: mayaData,
             gcashRowsRawData: gcashData,
+            denominationRawData: dailyCashCountData,
             summaryRowsRaw: summaryData.length,
             summaryRowsFiltered: filteredSummaryRows.length,
             bankRowsFiltered: filteredBankRows.length,
             mayaRowsFiltered: filteredMayaRows.length,
-            gcashRowsFiltered: filteredGcashRows.length
+            gcashRowsFiltered: filteredGcashRows.length,
+            denominationRowsFiltered: filteredDailyCashRows.length,
+            denominationRowsUsed: activeCashCountRows.length
           });
         }
       } catch (fetchError) {
         if (!active) return;
+        if (isSalesReportDebugEnabled) {
+          console.error("DENOMINATION ERROR", fetchError);
+          console.log("SELECTED REPORT DATE", reportDate);
+        }
         const message =
           fetchError instanceof Error ? fetchError.message : "Failed to load sales report.";
         setError(message);
@@ -552,20 +636,21 @@ export function SalesDashboardSalesReportPage() {
   const newPlatinum = getNewAccountsCount("platinum");
   const upgradesCount = resolvePaymentAmount(["upgrade", "upgrades"], 0);
 
-  const cashRows = useMemo(
+  const cashRows = useMemo<CashDenominationRow[]>(
     () =>
       DENOMINATIONS.map((denom) => {
-        const pieces = toNumber(cashPieces[String(denom)] || "0");
+        const label = String(denom === 0.25 ? 0.25 : denom);
+        const row = cashBreakdown[label] ?? { pieces: 0, amount: 0 };
         return {
-          label: denom === 0.25 ? "0.25" : String(denom),
-          pieces,
-          amount: denom * pieces
+          label,
+          pieces: row.pieces,
+          amount: row.amount
         };
       }),
-    [cashPieces]
+    [cashBreakdown]
   );
 
-  const totalCash = cashRows.reduce((sum, row) => sum + row.amount, 0);
+  const totalCash = cashTotalFromSource ?? cashRows.reduce((sum, row) => sum + row.amount, 0);
 
   return (
     <div className="bg-white rounded-md border border-gray-300 p-3 text-[11px] leading-tight">
@@ -725,19 +810,8 @@ export function SalesDashboardSalesReportPage() {
                       {cashRows.map((row) => (
                         <tr key={row.label}>
                           <td className="border border-black px-2 py-1">{row.label}</td>
-                          <td className="border border-black px-2 py-1">
-                            <input
-                              type="number"
-                              min="0"
-                              value={cashPieces[row.label] || "0"}
-                              onChange={(event) =>
-                                setCashPieces((prev) => ({
-                                  ...prev,
-                                  [row.label]: event.target.value
-                                }))
-                              }
-                              className="w-full border-0 p-0 text-right text-[11px] outline-none"
-                            />
+                          <td className="border border-black px-2 py-1 text-right">
+                            {row.pieces}
                           </td>
                           <td className="border border-black px-2 py-1 text-right">
                             {formatMoney(row.amount)}
