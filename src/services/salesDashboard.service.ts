@@ -385,6 +385,18 @@ export async function fetchSalesReportRows(): Promise<SalesDashboardRawRow[]> {
   return (data as SalesDashboardRawRow[] | null) ?? [];
 }
 
+export async function fetchSalesEntryRows(): Promise<SalesDashboardRawRow[]> {
+  const { data, error } = await supabase.from("sales_entries").select("*");
+  if (error) throw error;
+  return (data as SalesDashboardRawRow[] | null) ?? [];
+}
+
+export async function fetchSalesEntryPaymentRows(): Promise<SalesDashboardRawRow[]> {
+  const { data, error } = await supabase.from("sales_entry_payments").select("*");
+  if (error) throw error;
+  return (data as SalesDashboardRawRow[] | null) ?? [];
+}
+
 export async function fetchDailyCashCountRows(): Promise<SalesDashboardRawRow[]> {
   const { data, error } = await supabase.from("v_daily_cash_count").select("*");
   if (error) throw error;

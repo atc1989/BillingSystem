@@ -3,7 +3,10 @@ import {
   fetchBankTransferDetails,
   fetchDailyCashCountRows,
   fetchGcashDetails,
+  fetchInventoryReportRows,
   fetchMayaDetails,
+  fetchSalesEntryPaymentRows,
+  fetchSalesEntryRows,
   fetchSalesReportRows,
   type SalesDashboardRawRow
 } from "../services/salesDashboard.service";
@@ -34,6 +37,14 @@ type CashDenominationRow = {
 };
 
 type CashBreakdownMap = Record<string, { pieces: number; amount: number }>;
+type PaymentModeTotals = {
+  cash: number;
+  ewallet: number;
+  bankTransfer: number;
+  maya: number;
+  gcash: number;
+  cheque: number;
+};
 
 const DATE_KEYS = [
   "report_date",
@@ -125,6 +136,266 @@ const hasMetricKeys = (rows: SalesDashboardRawRow[], keys: string[]): boolean =>
 
 const sumByKeys = (rows: SalesDashboardRawRow[], keys: string[]): number =>
   rows.reduce((sum, row) => sum + pickNumber(row, keys), 0);
+
+const EMPTY_PAYMENT_MODE_TOTALS: PaymentModeTotals = {
+  cash: 0,
+  ewallet: 0,
+  bankTransfer: 0,
+  maya: 0,
+  gcash: 0,
+  cheque: 0
+};
+
+const toNormalized = (value: string): string => value.trim().toLowerCase();
+
+const toBoolean = (value: unknown): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return ["true", "t", "yes", "y", "1"].includes(normalized);
+};
+
+const rowId = (row: SalesDashboardRawRow): string =>
+  String(row["id"] ?? row["sales_entry_id"] ?? row["sale_entry_id"] ?? "").trim();
+
+const paymentLinkedEntryId = (row: SalesDashboardRawRow): string =>
+  String(row["sales_entry_id"] ?? row["sale_entry_id"] ?? row["id"] ?? "").trim();
+
+const SUMMARY_SECTION_KEYS = [
+  "mobile_stockist_qty",
+  "platinum_qty",
+  "gold_qty",
+  "silver_qty",
+  "mobile_stockist_platinum_qty",
+  "mobile_stockist_gold_qty",
+  "mobile_stockist_silver_qty",
+  "depot_platinum_qty",
+  "depot_gold_qty",
+  "depot_silver_qty",
+  "retail_bottle_qty",
+  "retail_blister_qty",
+  "employee_discount_qty",
+  "mobile_stockist_retail_bottle_qty",
+  "depot_retail_bottle_qty"
+] as const;
+
+const hasPositiveSummarySectionMetrics = (rows: SalesDashboardRawRow[]): boolean =>
+  SUMMARY_SECTION_KEYS.some((key) => sumByKeys(rows, [key]) > 0);
+
+const buildDerivedSummaryRow = (rows: SalesDashboardRawRow[]): SalesDashboardRawRow | null => {
+  if (rows.length === 0) return null;
+
+  const derived: Record<string, number> = {
+    mobile_stockist_qty: 0,
+    mobile_stockist_total: 0,
+    mobile_stockist_package_total: 0,
+    platinum_qty: 0,
+    platinum_total: 0,
+    gold_qty: 0,
+    gold_total: 0,
+    silver_qty: 0,
+    silver_total: 0,
+    mobile_stockist_platinum_qty: 0,
+    mobile_stockist_platinum_total: 0,
+    mobile_stockist_gold_qty: 0,
+    mobile_stockist_gold_total: 0,
+    mobile_stockist_silver_qty: 0,
+    mobile_stockist_silver_total: 0,
+    depot_platinum_qty: 0,
+    depot_platinum_total: 0,
+    depot_gold_qty: 0,
+    depot_gold_total: 0,
+    depot_silver_qty: 0,
+    depot_silver_total: 0,
+    retail_bottle_qty: 0,
+    retail_bottle_total: 0,
+    retail_blister_qty: 0,
+    retail_blister_total: 0,
+    employee_discount_qty: 0,
+    employee_discount_total: 0,
+    mobile_stockist_retail_bottle_qty: 0,
+    mobile_stockist_retail_bottle_total: 0,
+    mobile_stockist_retail_total: 0,
+    depot_retail_bottle_qty: 0,
+    depot_retail_bottle_total: 0,
+    depot_retail_total: 0,
+    new_accounts_silver: 0,
+    new_accounts_gold: 0,
+    new_accounts_platinum: 0,
+    gross_total_sales: 0
+  };
+
+  rows.forEach((row) => {
+    const packageType = toNormalized(pickString(row, ["package_type"], ""));
+    const memberType = toNormalized(pickString(row, ["member_type"], ""));
+    const quantityRaw = pickNumber(row, ["quantity", "qty", "count", "package_qty", "package_quantity"]);
+    const quantity = quantityRaw > 0 ? quantityRaw : 1;
+    const blisterCountRaw = pickNumber(row, ["blister_count", "blister_qty", "quantity", "qty"]);
+    const blisterCount = blisterCountRaw > 0 ? blisterCountRaw : quantity;
+    const amountRaw = pickNumber(row, ["amount_total", "total_amount", "amount", "total_sales", "value"]);
+    const amount = amountRaw > 0 ? amountRaw : 0;
+    const isMobileStockist = memberType.includes("mobile stockist");
+    const isPlatinum = packageType.includes("platinum") || packageType.includes("plat");
+    const isGold = packageType.includes("gold");
+    const isSilver = packageType.includes("silver");
+    const isRetailBottle =
+      packageType.includes("retail") ||
+      (packageType.includes("bottle") && !isPlatinum && !isGold && !isSilver);
+    const isRetailBlister = packageType.includes("blister");
+    const isDiscount = packageType.includes("discount");
+    const isNewMember = toBoolean(row["new_member"]) || toBoolean(row["is_new_member"]);
+
+    if (isPlatinum || isGold || isSilver) {
+      if (isPlatinum) {
+        derived.platinum_qty += quantity;
+        derived.platinum_total += amount > 0 ? amount : quantity * DEFAULT_PRICE.platinum;
+      }
+      if (isGold) {
+        derived.gold_qty += quantity;
+        derived.gold_total += amount > 0 ? amount : quantity * DEFAULT_PRICE.gold;
+      }
+      if (isSilver) {
+        derived.silver_qty += quantity;
+        derived.silver_total += amount > 0 ? amount : quantity * DEFAULT_PRICE.silver;
+      }
+
+      if (isMobileStockist) {
+        derived.mobile_stockist_qty += quantity;
+        derived.mobile_stockist_total += amount;
+        derived.mobile_stockist_package_total += amount;
+
+        if (isPlatinum) {
+          derived.mobile_stockist_platinum_qty += quantity;
+          derived.mobile_stockist_platinum_total += amount;
+        }
+        if (isGold) {
+          derived.mobile_stockist_gold_qty += quantity;
+          derived.mobile_stockist_gold_total += amount;
+        }
+        if (isSilver) {
+          derived.mobile_stockist_silver_qty += quantity;
+          derived.mobile_stockist_silver_total += amount;
+        }
+      } else {
+        if (isPlatinum) {
+          derived.depot_platinum_qty += quantity;
+          derived.depot_platinum_total += amount;
+        }
+        if (isGold) {
+          derived.depot_gold_qty += quantity;
+          derived.depot_gold_total += amount;
+        }
+        if (isSilver) {
+          derived.depot_silver_qty += quantity;
+          derived.depot_silver_total += amount;
+        }
+      }
+
+      if (isNewMember) {
+        if (isSilver) derived.new_accounts_silver += 1;
+        if (isGold) derived.new_accounts_gold += 1;
+        if (isPlatinum) derived.new_accounts_platinum += 1;
+      }
+    }
+
+    if (isRetailBottle) {
+      const bottleAmount = amount > 0 ? amount : quantity * DEFAULT_PRICE.bottle;
+      derived.retail_bottle_qty += quantity;
+      derived.retail_bottle_total += bottleAmount;
+
+      if (isMobileStockist) {
+        derived.mobile_stockist_retail_bottle_qty += quantity;
+        derived.mobile_stockist_retail_bottle_total += bottleAmount;
+        derived.mobile_stockist_retail_total += bottleAmount;
+      } else {
+        derived.depot_retail_bottle_qty += quantity;
+        derived.depot_retail_bottle_total += bottleAmount;
+        derived.depot_retail_total += bottleAmount;
+      }
+    }
+
+    if (isRetailBlister) {
+      const blisterAmount = amount > 0 ? amount : blisterCount * DEFAULT_PRICE.blister;
+      derived.retail_blister_qty += blisterCount;
+      derived.retail_blister_total += blisterAmount;
+    }
+
+    if (isDiscount) {
+      derived.employee_discount_qty += quantity;
+      derived.employee_discount_total += amount;
+    }
+
+    derived.gross_total_sales += amount;
+  });
+
+  return derived;
+};
+
+const buildPaymentFallback = (
+  entryRows: SalesDashboardRawRow[],
+  paymentRows: SalesDashboardRawRow[]
+): { bankRows: DetailRow[]; mayaRows: DetailRow[]; gcashRows: DetailRow[]; modeTotals: PaymentModeTotals } => {
+  const entriesById = new Map<string, SalesDashboardRawRow>();
+  entryRows.forEach((row) => {
+    const id = rowId(row);
+    if (id) entriesById.set(id, row);
+  });
+
+  const bankRows: DetailRow[] = [];
+  const mayaRows: DetailRow[] = [];
+  const gcashRows: DetailRow[] = [];
+  const modeTotals: PaymentModeTotals = { ...EMPTY_PAYMENT_MODE_TOTALS };
+
+  paymentRows.forEach((row) => {
+    const entryId = paymentLinkedEntryId(row);
+    if (!entryId || !entriesById.has(entryId)) return;
+
+    const linkedEntry = entriesById.get(entryId);
+    const mode = toNormalized(pickString(row, ["payment_mode", "mode", "primary_payment_mode"], ""));
+    const paymentType = toNormalized(pickString(row, ["payment_type", "mode_type"], ""));
+    const amount = pickNumber(row, ["amount", "total_amount", "amount_total", "primary_payment_amount"]);
+    if (amount <= 0) return;
+
+    const detail: DetailRow = {
+      memberName: linkedEntry
+        ? pickString(linkedEntry, ["member_name", "name", "full_name"], "-")
+        : pickString(row, ["member_name", "name", "full_name"], "-"),
+      referenceNo: pickString(row, ["reference_number", "reference_no", "reference"], "-"),
+      amount
+    };
+
+    if (mode.includes("cash")) {
+      modeTotals.cash += amount;
+    }
+    if (mode.includes("bank")) {
+      modeTotals.bankTransfer += amount;
+      bankRows.push(detail);
+    }
+    if (mode.includes("cheque") || mode.includes("check")) {
+      modeTotals.cheque += amount;
+    }
+
+    const isEwallet = mode.includes("ewallet") || mode.includes("e-wallet");
+    const isMaya = paymentType.includes("maya") || mode.includes("maya");
+    const isGcash = paymentType.includes("gcash") || mode.includes("gcash");
+
+    if (isEwallet || isMaya || isGcash) {
+      modeTotals.ewallet += amount;
+    }
+    if (isMaya) {
+      modeTotals.maya += amount;
+      mayaRows.push(detail);
+    }
+    if (isGcash) {
+      modeTotals.gcash += amount;
+      gcashRows.push(detail);
+    }
+  });
+
+  return { bankRows, mayaRows, gcashRows, modeTotals };
+};
 
 const buildEmptyCashBreakdown = (): CashBreakdownMap =>
   Object.fromEntries(
@@ -275,11 +546,13 @@ function resolveMetricRow(
   if (hasQtyColumns || hasAmountColumns) {
     const amount =
       hasAmountColumns && amountFromColumns > 0 ? amountFromColumns : qty * config.fallbackPrice;
-    return {
-      qty,
-      price: config.fallbackPrice,
-      amount
-    };
+    if (qty > 0 || amount > 0) {
+      return {
+        qty,
+        price: config.fallbackPrice,
+        amount
+      };
+    }
   }
 
   const fallback = aggregateWithFallback(
@@ -341,6 +614,9 @@ export function SalesDashboardSalesReportPage() {
   const [checkedBy, setCheckedBy] = useState("");
   const [cashBreakdown, setCashBreakdown] = useState<CashBreakdownMap>(() => buildEmptyCashBreakdown());
   const [cashTotalFromSource, setCashTotalFromSource] = useState<number | null>(null);
+  const [paymentModeTotals, setPaymentModeTotals] = useState<PaymentModeTotals>(
+    EMPTY_PAYMENT_MODE_TOTALS
+  );
 
   const [summaryRows, setSummaryRows] = useState<SalesDashboardRawRow[]>([]);
   const [bankRows, setBankRows] = useState<DetailRow[]>([]);
@@ -357,13 +633,27 @@ export function SalesDashboardSalesReportPage() {
         setIsLoading(true);
         setError(null);
 
-        const [summaryData, bankData, mayaData, gcashData, dailyCashCountData] = await Promise.all([
-          fetchSalesReportRows(),
-          fetchBankTransferDetails(),
-          fetchMayaDetails(),
-          fetchGcashDetails(),
-          fetchDailyCashCountRows()
-        ]);
+        const [summaryData, bankData, mayaData, gcashData, dailyCashCountData, inventoryData, salesEntryData, salesPaymentData] =
+          await Promise.all([
+            fetchSalesReportRows(),
+            fetchBankTransferDetails(),
+            fetchMayaDetails(),
+            fetchGcashDetails(),
+            fetchDailyCashCountRows(),
+            fetchInventoryReportRows(),
+            fetchSalesEntryRows().catch((entryError) => {
+              if (isSalesReportDebugEnabled) {
+                console.error("SALES REPORT ENTRIES FALLBACK ERROR", entryError);
+              }
+              return [];
+            }),
+            fetchSalesEntryPaymentRows().catch((paymentError) => {
+              if (isSalesReportDebugEnabled) {
+                console.error("SALES REPORT PAYMENTS FALLBACK ERROR", paymentError);
+              }
+              return [];
+            })
+          ]);
 
         if (!active) return;
 
@@ -372,11 +662,35 @@ export function SalesDashboardSalesReportPage() {
         const filteredMayaRows = filterRowsForDate(mayaData, reportDate);
         const filteredGcashRows = filterRowsForDate(gcashData, reportDate);
         const filteredDailyCashRows = filterRowsForDate(dailyCashCountData, reportDate);
+        const filteredInventoryRows = filterRowsForDate(inventoryData, reportDate);
+        const filteredSalesEntryRows = filterRowsForDate(salesEntryData, reportDate);
 
-        setSummaryRows(filteredSummaryRows);
-        setBankRows(mapDetailRows(filteredBankRows));
-        setMayaRows(mapDetailRows(filteredMayaRows));
-        setGcashRows(mapDetailRows(filteredGcashRows));
+        const sourceRowsForDerivedSummary =
+          filteredInventoryRows.length > 0 ? filteredInventoryRows : filteredSalesEntryRows;
+        const derivedSummaryRow = buildDerivedSummaryRow(sourceRowsForDerivedSummary);
+        const summaryRowsForUi =
+          hasPositiveSummarySectionMetrics(filteredSummaryRows) || !derivedSummaryRow
+            ? filteredSummaryRows
+            : [...filteredSummaryRows, derivedSummaryRow];
+
+        const selectedEntryIds = new Set<string>(
+          filteredSalesEntryRows.map((row) => rowId(row)).filter((value) => Boolean(value))
+        );
+        const filteredSalesPaymentRows = salesPaymentData.filter((row) => {
+          const linkedId = paymentLinkedEntryId(row);
+          return Boolean(linkedId) && selectedEntryIds.has(linkedId);
+        });
+
+        const paymentFallback = buildPaymentFallback(filteredSalesEntryRows, filteredSalesPaymentRows);
+        const bankRowsFromView = mapDetailRows(filteredBankRows);
+        const mayaRowsFromView = mapDetailRows(filteredMayaRows);
+        const gcashRowsFromView = mapDetailRows(filteredGcashRows);
+
+        setSummaryRows(summaryRowsForUi);
+        setBankRows(bankRowsFromView.length > 0 ? bankRowsFromView : paymentFallback.bankRows);
+        setMayaRows(mayaRowsFromView.length > 0 ? mayaRowsFromView : paymentFallback.mayaRows);
+        setGcashRows(gcashRowsFromView.length > 0 ? gcashRowsFromView : paymentFallback.gcashRows);
+        setPaymentModeTotals(paymentFallback.modeTotals);
         const activeCashCountRows = pickLatestCashCountRows(filteredDailyCashRows);
         const { breakdown, totalFromSource } = mapCashBreakdown(activeCashCountRows);
         setCashBreakdown(breakdown);
@@ -391,13 +705,21 @@ export function SalesDashboardSalesReportPage() {
             mayaRowsRawData: mayaData,
             gcashRowsRawData: gcashData,
             denominationRawData: dailyCashCountData,
+            inventoryRowsRawData: inventoryData,
+            salesEntriesRawData: salesEntryData,
+            salesPaymentsRawData: salesPaymentData,
             summaryRowsRaw: summaryData.length,
             summaryRowsFiltered: filteredSummaryRows.length,
+            summaryRowsForUi: summaryRowsForUi.length,
             bankRowsFiltered: filteredBankRows.length,
             mayaRowsFiltered: filteredMayaRows.length,
             gcashRowsFiltered: filteredGcashRows.length,
+            inventoryRowsFiltered: filteredInventoryRows.length,
+            salesEntriesFiltered: filteredSalesEntryRows.length,
+            salesPaymentsFiltered: filteredSalesPaymentRows.length,
             denominationRowsFiltered: filteredDailyCashRows.length,
-            denominationRowsUsed: activeCashCountRows.length
+            denominationRowsUsed: activeCashCountRows.length,
+            paymentFallbackTotals: paymentFallback.modeTotals
           });
         }
       } catch (fetchError) {
@@ -653,23 +975,52 @@ export function SalesDashboardSalesReportPage() {
 
   const paymentRows = useMemo(
     () => [
-      { label: "Cash on Hand", amount: resolvePaymentAmount(["cash_total", "cash_amount"], 0, ["cash"]) },
+      {
+        label: "Cash on Hand",
+        amount: resolvePaymentAmount(["cash_total", "cash_amount"], paymentModeTotals.cash, ["cash"])
+      },
       {
         label: "E-Wallet",
-        amount: resolvePaymentAmount(["ewallet_total", "e_wallet_total"], 0, ["ewallet", "e-wallet"])
+        amount: resolvePaymentAmount(
+          ["ewallet_total", "e_wallet_total"],
+          paymentModeTotals.ewallet,
+          ["ewallet", "e-wallet"]
+        )
       },
       {
         label: "Bank Transfer",
-        amount: resolvePaymentAmount(["bank_transfer_total", "bank_total"], bankTotal, ["bank transfer", "bank"])
+        amount: resolvePaymentAmount(
+          ["bank_transfer_total", "bank_total"],
+          Math.max(bankTotal, paymentModeTotals.bankTransfer),
+          ["bank transfer", "bank"]
+        )
       },
-      { label: "Maya", amount: resolvePaymentAmount(["maya_total"], mayaTotal, ["maya"]) },
-      { label: "GCash", amount: resolvePaymentAmount(["gcash_total"], gcashTotal, ["gcash"]) },
-      { label: "Cheque", amount: resolvePaymentAmount(["cheque_total", "check_total"], 0, ["cheque", "check"]) }
+      { label: "Maya", amount: resolvePaymentAmount(["maya_total"], Math.max(mayaTotal, paymentModeTotals.maya), ["maya"]) },
+      {
+        label: "GCash",
+        amount: resolvePaymentAmount(["gcash_total"], Math.max(gcashTotal, paymentModeTotals.gcash), ["gcash"])
+      },
+      {
+        label: "Cheque",
+        amount: resolvePaymentAmount(["cheque_total", "check_total"], paymentModeTotals.cheque, [
+          "cheque",
+          "check"
+        ])
+      }
     ],
-    [summaryRows, bankTotal, mayaTotal, gcashTotal]
+    [summaryRows, bankTotal, mayaTotal, gcashTotal, paymentModeTotals]
   );
 
   const getNewAccountsCount = (memberType: "silver" | "gold" | "platinum"): number => {
+    const keyMap: Record<typeof memberType, string[]> = {
+      silver: ["new_accounts_silver", "new_silver_accounts"],
+      gold: ["new_accounts_gold", "new_gold_accounts"],
+      platinum: ["new_accounts_platinum", "new_platinum_accounts"]
+    };
+    if (hasMetricKeys(summaryRows, keyMap[memberType])) {
+      return sumByKeys(summaryRows, keyMap[memberType]);
+    }
+
     const matched = summaryRows.filter((row) => {
       const text = toSearchText(row);
       return text.includes("new account") && text.includes(memberType);
