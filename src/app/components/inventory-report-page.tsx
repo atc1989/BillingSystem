@@ -227,11 +227,64 @@ export function InventoryReportPage() {
     <title>Inventory Daily Report</title>
     ${copiedStyles}
     <style>
-      @page { size: A4 portrait; margin: 10mm; }
-      html, body { margin: 0; padding: 0; background: #fff; }
-      #inventory-report-print { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
-      #inventory-report-print table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
-      .no-print { display: none !important; }
+      @page { size: A4 landscape; margin: 8mm; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        width: 100%;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      #inventory-report-print {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: #fff !important;
+      }
+      #inventory-report-print .overflow-x-auto {
+        overflow: visible !important;
+      }
+      #inventory-report-print table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+      }
+      #inventory-report-print th,
+      #inventory-report-print td {
+        min-width: 0 !important;
+        padding: 4px 5px !important;
+        font-size: 10px !important;
+        line-height: 1.2 !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        overflow-wrap: anywhere !important;
+      }
+      #inventory-report-print h2 {
+        font-size: 20px !important;
+        margin: 0 0 6px !important;
+      }
+      #inventory-report-print h3 {
+        font-size: 16px !important;
+        margin: 0 0 6px !important;
+      }
+      #inventory-report-print .mb-8 {
+        margin-bottom: 14px !important;
+        padding-bottom: 10px !important;
+      }
+      #inventory-report-print .mt-12 {
+        margin-top: 18px !important;
+      }
+      #inventory-report-print .pt-8 {
+        padding-top: 10px !important;
+      }
+      .no-print {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -260,53 +313,70 @@ export function InventoryReportPage() {
       <style>{`
         @media print {
           @page {
-            size: A4 portrait;
-            margin: 10mm;
+            size: A4 landscape;
+            margin: 8mm;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #fff !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #print-root {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .no-print {
             display: none !important;
           }
-          #inventory-report-print, #inventory-report-print * {
-            display: block !important;
-            visibility: visible !important;
-          }
           #inventory-report-print {
-            position: absolute;
-            left: 0;
-            top: 0;
             width: 100% !important;
+            max-width: none !important;
             box-shadow: none !important;
             border-radius: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
             background: #fff !important;
           }
+          #inventory-report-print .overflow-x-auto {
+            overflow: visible !important;
+          }
           #inventory-report-print table {
-            display: table !important;
             width: 100% !important;
             table-layout: fixed !important;
             border-collapse: collapse !important;
           }
-          #inventory-report-print thead {
-            display: table-header-group !important;
-          }
-          #inventory-report-print tbody {
-            display: table-row-group !important;
-          }
-          #inventory-report-print tfoot {
-            display: table-footer-group !important;
-          }
-          #inventory-report-print tr {
-            display: table-row !important;
-          }
           #inventory-report-print th,
           #inventory-report-print td {
-            display: table-cell !important;
+            min-width: 0 !important;
+            padding: 4px 5px !important;
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+          }
+          #inventory-report-print h2 {
+            font-size: 20px !important;
+            margin: 0 0 6px !important;
+          }
+          #inventory-report-print h3 {
+            font-size: 16px !important;
+            margin: 0 0 6px !important;
+          }
+          #inventory-report-print .mb-8 {
+            margin-bottom: 14px !important;
+            padding-bottom: 10px !important;
+          }
+          #inventory-report-print .mt-12 {
+            margin-top: 18px !important;
+          }
+          #inventory-report-print .pt-8 {
+            padding-top: 10px !important;
           }
         }
       `}</style>
