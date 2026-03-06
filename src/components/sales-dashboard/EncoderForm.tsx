@@ -163,6 +163,36 @@ function mapPayment(mode: SplitPaymentMode | ""): {
   }
 }
 
+function mapSaveErrorToMessage(error: unknown): string {
+  const fallback = "Unable to save entry. Please check required fields and try again.";
+  if (!error || typeof error !== "object") return fallback;
+
+  const saveError = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    status?: number;
+  };
+
+  if (saveError.code === "23502") {
+    return "Unable to save entry. A required field is missing.";
+  }
+
+  if (saveError.code === "23505") {
+    return "Unable to save entry. A duplicate record already exists.";
+  }
+
+  if (saveError.code === "42501" || saveError.status === 401 || saveError.status === 403) {
+    return "Unable to save entry. You do not have permission to perform this action.";
+  }
+
+  if (saveError.message && /network|fetch|failed to fetch/i.test(saveError.message)) {
+    return "Unable to save entry due to a network/configuration issue. Please try again.";
+  }
+
+  return fallback;
+}
+
 const initialFormData: FormData = {
   event: "Davao City",
   date: "",
@@ -464,8 +494,8 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
       alert("Entry saved successfully!");
       handleClear();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to save entry.";
-      alert(message);
+      console.error("SAVE ERROR", error);
+      alert(mapSaveErrorToMessage(error));
     } finally {
       setIsSaving(false);
     }
