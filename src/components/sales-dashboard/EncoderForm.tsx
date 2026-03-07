@@ -1,7 +1,21 @@
 
 import React, { useEffect, useMemo, useState } from "react";
+import { CheckIcon, ChevronsUpDownIcon } from "lucide-react@0.487.0";
 import { FormField } from "./form-field";
 import { FormSelect } from "./form-select";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from "../ui/command";
+import {
+  fetchSalesDashboardUsers,
+  type SalesDashboardUser
+} from "../../services/salesDashboard.service";
 import type { SaleEntry } from "../../types/sales";
 
 const PAYMENT_MODES = [
@@ -310,6 +324,11 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
   const [isSaveHovered, setIsSaveHovered] = useState(false);
   const [isClearHovered, setIsClearHovered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [users, setUsers] = useState<SalesDashboardUser[]>([]);
+  const [isUsersLoading, setIsUsersLoading] = useState(false);
+  const [usersLoadError, setUsersLoadError] = useState<string | null>(null);
+  const [isUsernameOpen, setIsUsernameOpen] = useState(false);
+  const [usernameQuery, setUsernameQuery] = useState("");
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     if (field === "event" || field === "originalPrice" || field === "priceAfterDiscount") {
@@ -336,11 +355,38 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
     });
   };
 
+  const loadUsers = React.useCallback(async () => {
+    setIsUsersLoading(true);
+    setUsersLoadError(null);
+
+    try {
+      const rows = await fetchSalesDashboardUsers();
+      setUsers(rows);
+    } catch (error) {
+      console.error("USERS FETCH ERROR", error);
+      const message = error instanceof Error ? error.message : "Failed to load usernames.";
+      setUsersLoadError(message);
+      setUsers([]);
+    } finally {
+      setIsUsersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
   useEffect(() => {
     if (formData.event !== "Davao City") {
       setFormData((prev) => ({ ...prev, event: "Davao City" }));
     }
   }, [formData.event]);
+
+  useEffect(() => {
+    if (!isUsernameOpen) {
+      setUsernameQuery(formData.username);
+    }
+  }, [formData.username, isUsernameOpen]);
 
   const netAmount = useMemo(() => {
     const afterDiscount = Number(formData.priceAfterDiscount || 0);
@@ -393,6 +439,23 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
       };
     });
   }, [netAmount, formData.modeOfPayment]);
+
+  const filteredUsers = useMemo(() => {
+    const query = usernameQuery.trim().toLowerCase();
+    if (!query) return users;
+
+    return users.filter((user) => {
+      const username = user.username.toLowerCase();
+      const memberName = (user.member_name ?? "").toLowerCase();
+      return username.includes(query) || memberName.includes(query);
+    });
+  }, [users, usernameQuery]);
+
+  const hasExactUsernameMatch = useMemo(() => {
+    const query = usernameQuery.trim().toLowerCase();
+    if (!query) return false;
+    return users.some((user) => user.username.trim().toLowerCase() === query);
+  }, [users, usernameQuery]);
 
   const handleClear = () => {
     setFormData(initialFormData);
@@ -518,6 +581,7 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
     try {
       setIsSaving(true);
       await onSave(entry);
+      await loadUsers();
       alert("Entry saved successfully!");
       handleClear();
     } catch (error) {
@@ -634,12 +698,114 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
             onChange={(value) => handleInputChange("memberName", value)}
             placeholder="Enter member name"
           />
-          <FormField
-            label="Username"
-            value={formData.username}
-            onChange={(value) => handleInputChange("username", value)}
-            placeholder="Enter username"
-          />
+          <label className="block">
+            <span
+              className="block mb-2"
+              style={{
+                color: "#374151",
+                fontSize: "14px",
+                lineHeight: "20px",
+                fontWeight: 400,
+              }}
+            >
+              Username
+            </span>
+            <Popover open={isUsernameOpen} onOpenChange={setIsUsernameOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    height: "44px",
+                    padding: "0 12px",
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: isUsernameOpen ? "#2E3A8C" : "#D0D5DD",
+                    borderRadius: "8px",
+                    outline: "none",
+                    backgroundColor: "#FFFFFF",
+                    color: formData.username ? "#111827" : "#9CA3AF",
+                    fontSize: "14px",
+                    lineHeight: "20px",
+                    fontWeight: 400,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    {formData.username || "Select or search username"}
+                  </span>
+                  <ChevronsUpDownIcon style={{ width: "16px", height: "16px", color: "#6B7280", flexShrink: 0 }} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    value={usernameQuery}
+                    onValueChange={setUsernameQuery}
+                    placeholder="Search username..."
+                  />
+                  <CommandList>
+                    <CommandEmpty>
+                      {usersLoadError ? usersLoadError : isUsersLoading ? "Loading usernames..." : "No username found."}
+                    </CommandEmpty>
+                    <CommandGroup heading="Usernames">
+                      {usernameQuery.trim() && !hasExactUsernameMatch ? (
+                        <CommandItem
+                          value={`create-${usernameQuery}`}
+                          onSelect={() => {
+                            const nextUsername = usernameQuery.trim();
+                            handleInputChange("username", nextUsername);
+                            setUsernameQuery(nextUsername);
+                            setIsUsernameOpen(false);
+                          }}
+                        >
+                          <span>Use "{usernameQuery.trim()}"</span>
+                        </CommandItem>
+                      ) : null}
+                      {filteredUsers.map((user) => (
+                        <CommandItem
+                          key={user.id}
+                          value={`${user.username}-${user.id}`}
+                          onSelect={() => {
+                            handleInputChange("username", user.username);
+                            setUsernameQuery(user.username);
+                            if (!formData.memberName && user.member_name) {
+                              handleInputChange("memberName", user.member_name);
+                            }
+                            setIsUsernameOpen(false);
+                          }}
+                        >
+                          <CheckIcon
+                            className="size-4"
+                            style={{
+                              opacity:
+                                formData.username.trim().toLowerCase() === user.username.trim().toLowerCase()
+                                  ? 1
+                                  : 0
+                            }}
+                          />
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span>{user.username}</span>
+                            {user.member_name ? (
+                              <span style={{ fontSize: "12px", color: "#6B7280" }}>{user.member_name}</span>
+                            ) : null}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </label>
           <FormSelect
             label="New Member?"
             value={formData.newMember}

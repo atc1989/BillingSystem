@@ -3,6 +3,7 @@ import { Navigate, Route } from "react-router-dom";
 import { SalesDashboardLayout } from "../components/SalesDashboardLayout";
 import { SalesDashboardEncoderPage } from "../components/SalesDashboardEncoderPage";
 import { SalesDashboardSalesReportPage } from "../components/SalesDashboardSalesReportPage";
+import { SalesDashboardUsersPage } from "../components/SalesDashboardUsersPage";
 import { InventoryReportPage } from "../components/inventory-report-page";
 import { ReportsPage } from "../components/reports-page";
 import type { SaleEntry } from "../types/sales";
@@ -181,6 +182,10 @@ function SalesDashboardSalesReportRoute() {
   return <SalesDashboardSalesReportPage />;
 }
 
+function SalesDashboardUsersRoute() {
+  return <SalesDashboardUsersPage />;
+}
+
 function SalesDashboardReportsRoute() {
   const { refreshSavedCount } = useSalesDashboardEntries();
   const [salesEntries, setSalesEntries] = useState<SaleEntry[]>([]);
@@ -269,5 +274,6 @@ export const salesDashboardRoutes = (
     <Route path="inventory-report" element={<InventoryReportPage />} />
     <Route path="sales-report" element={<SalesDashboardSalesReportRoute />} />
     <Route path="reports" element={<SalesDashboardReportsRoute />} />
+    <Route path="users" element={<SalesDashboardUsersRoute />} />
   </Route>
 );

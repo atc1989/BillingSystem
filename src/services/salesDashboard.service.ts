@@ -2,7 +2,15 @@ import { supabase } from "../lib/supabaseClient";
 import type { SaleEntry } from "../types/sales";
 
 export type SalesDashboardRawRow = Record<string, unknown>;
+export type SalesDashboardUser = {
+  id: string;
+  username: string;
+  member_name: string | null;
+  created_at: string;
+};
+
 type SaveStep = "sales_entries" | "sales_entry_inventory" | "sales_entry_payments";
+const SALES_DASHBOARD_USERS_TABLE = "sales_dashboard_users";
 
 const isSalesSaveDebugEnabled =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG_SALES_SAVE === "true";
@@ -40,6 +48,28 @@ const toBoolean = (value: unknown): boolean | null => {
 const debugSaveLog = (label: string, data: unknown) => {
   if (!isSalesSaveDebugEnabled) return;
   console.log(label, data);
+};
+
+const isMissingRelationError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") return false;
+
+  const maybeError = error as {
+    code?: string;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
+
+  const joined = [maybeError.code, maybeError.message, maybeError.details, maybeError.hint]
+    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .join(" ");
+
+  return (
+    maybeError.code === "42P01" ||
+    maybeError.code === "PGRST205" ||
+    /relation .* does not exist/i.test(joined) ||
+    /table .* does not exist/i.test(joined)
+  );
 };
 
 const toErrorDebugMeta = (error: unknown) => {
@@ -163,39 +193,101 @@ async function insertRowsWithColumnFallback(
   throw new Error(`Insert retries exceeded for ${table}.`);
 }
 
-async function resolveSalesUserId(username: string): Promise<number | null> {
-  const trimmed = username.trim();
-  if (!trimmed) return null;
+export async function fetchSalesDashboardUsers(): Promise<SalesDashboardUser[]> {
+  const { data, error } = await supabase
+    .from(SALES_DASHBOARD_USERS_TABLE)
+    .select("id, username, member_name, created_at")
+    .order("username", { ascending: true });
 
-  try {
-    const { data, error } = await supabase
-      .from("sales_users")
-      .select("id")
-      .eq("username", trimmed)
-      .maybeSingle();
+  if (error) throw error;
+  return (data as SalesDashboardUser[] | null) ?? [];
+}
 
-    if (error) return null;
-    const rawId = (data as { id?: number | string } | null)?.id;
-    const parsed = typeof rawId === "number" ? rawId : Number(rawId);
-    return Number.isFinite(parsed) ? parsed : null;
-  } catch {
-    return null;
+export async function ensureSalesDashboardUser(input: {
+  username: string;
+  memberName?: string;
+}): Promise<SalesDashboardUser | null> {
+  const trimmedUsername = input.username.trim();
+  const trimmedMemberName = toText(input.memberName);
+  if (!trimmedUsername) return null;
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from(SALES_DASHBOARD_USERS_TABLE)
+    .select("id, username, member_name, created_at")
+    .ilike("username", trimmedUsername)
+    .limit(1);
+
+  if (existingError) throw existingError;
+
+  const existingUser = ((existingRows as SalesDashboardUser[] | null) ?? [])[0] ?? null;
+  if (existingUser) {
+    if (!existingUser.member_name && trimmedMemberName) {
+      const { error: updateError } = await supabase
+        .from(SALES_DASHBOARD_USERS_TABLE)
+        .update({ member_name: trimmedMemberName })
+        .eq("id", existingUser.id);
+
+      if (updateError && !isMissingRelationError(updateError)) {
+        throw updateError;
+      }
+      return { ...existingUser, member_name: trimmedMemberName };
+    }
+    return existingUser;
   }
+
+  const { data, error } = await supabase
+    .from(SALES_DASHBOARD_USERS_TABLE)
+    .insert({
+      username: trimmedUsername,
+      member_name: trimmedMemberName || null
+    })
+    .select("id, username, member_name, created_at")
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      const { data: duplicateRows, error: duplicateError } = await supabase
+        .from(SALES_DASHBOARD_USERS_TABLE)
+        .select("id, username, member_name, created_at")
+        .ilike("username", trimmedUsername)
+        .limit(1);
+
+      if (duplicateError) throw duplicateError;
+      return ((duplicateRows as SalesDashboardUser[] | null) ?? [])[0] ?? null;
+    }
+    throw error;
+  }
+
+  return (data as SalesDashboardUser | null) ?? null;
 }
 
 export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
   const primaryAmount = Math.max(0, toNumber(entry.totalSales) - toNumber(entry.amount2));
   const secondaryAmount = Math.max(0, toNumber(entry.amount2));
-  const salesUserIdPromise = resolveSalesUserId(entry.username);
   const authUserPromise = supabase.auth.getUser();
-
-  const [salesUserId, authUserResult] = await Promise.all([salesUserIdPromise, authUserPromise]);
+  const authUserResult = await authUserPromise;
   const authUserId = authUserResult.data.user?.id ?? null;
   const saleDate = toText(entry.date) || toLocalDateIso();
   const pofNumber = toText(entry.pgfNumber) || null;
   const newMember = toBoolean(entry.newMember);
   const toBlister = toBoolean(entry.toBlister);
   const discountValue = toNumber(entry.discount);
+
+  try {
+    await ensureSalesDashboardUser({
+      username: entry.username,
+      memberName: entry.memberName
+    });
+  } catch (error) {
+    if (!isMissingRelationError(error)) {
+      throw error;
+    }
+    console.warn("USERS SOURCE WARNING", {
+      table: SALES_DASHBOARD_USERS_TABLE,
+      reason: "Missing users table. Sales entry save continued without syncing users source.",
+      error: toErrorDebugMeta(error)
+    });
+  }
 
   const salesEntryInsert: Record<string, unknown> = {
     event: toText(entry.event),
@@ -228,10 +320,6 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
     collected_by: toText(entry.collectedBy)
   };
 
-  if (salesUserId !== null) {
-    // Optional link when username can be resolved.
-    salesEntryInsert.sales_user_id = salesUserId;
-  }
   if (authUserId) {
     // Helps satisfy common INSERT RLS policy shape: created_by = auth.uid().
     salesEntryInsert.created_by = authUserId;
