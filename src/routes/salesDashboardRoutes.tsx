@@ -3,7 +3,7 @@ import { Navigate, Route } from "react-router-dom";
 import { SalesDashboardLayout } from "../components/SalesDashboardLayout";
 import { SalesDashboardEncoderPage } from "../components/SalesDashboardEncoderPage";
 import { SalesDashboardSalesReportPage } from "../components/SalesDashboardSalesReportPage";
-import { InventoryReportPage } from "../app/components/inventory-report-page";
+import { InventoryReportPage } from "../components/inventory-report-page";
 import type { SaleEntry } from "../types/sales";
 import { fetchSalesEntriesCount, saveSalesEntry } from "../services/salesDashboard.service";
 

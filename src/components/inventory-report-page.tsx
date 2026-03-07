@@ -3,7 +3,7 @@ import { Printer } from "lucide-react";
 import {
   fetchInventoryReportRows,
   type SalesDashboardRawRow
-} from "../../services/salesDashboard.service";
+} from "../services/salesDashboard.service";
 
 const INVENTORY_DATE_KEYS = ["entry_date", "created_at"] as const;
 
