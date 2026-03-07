@@ -974,7 +974,9 @@ export function SalesDashboardSalesReportPage() {
     fallback: number,
     modeKeywords: string[] = []
   ): number => {
-    if (hasMetricKeys(summaryRows, keys)) return sumByKeys(summaryRows, keys);
+    const amountFromKeys = hasMetricKeys(summaryRows, keys) ? sumByKeys(summaryRows, keys) : 0;
+    if (amountFromKeys > 0) return amountFromKeys;
+    if (fallback > 0) return fallback;
 
     if (modeKeywords.length > 0) {
       const modeMatchedRows = summaryRows.filter((row) => {
@@ -983,7 +985,7 @@ export function SalesDashboardSalesReportPage() {
       });
 
       if (modeMatchedRows.length > 0) {
-        return modeMatchedRows.reduce(
+        const amountFromModeRows = modeMatchedRows.reduce(
           (sum, row) =>
             sum +
             pickNumber(row, [
@@ -996,10 +998,11 @@ export function SalesDashboardSalesReportPage() {
             ]),
           0
         );
+        if (amountFromModeRows > 0) return amountFromModeRows;
       }
     }
 
-    return fallback;
+    return amountFromKeys > 0 ? amountFromKeys : fallback;
   };
 
   const paymentRows = useMemo(
