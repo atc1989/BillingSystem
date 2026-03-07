@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { printElementById } from "../print/printReport";
 import {
   fetchBankTransferDetails,
   fetchDailyCashCountRows,
@@ -23,6 +24,58 @@ const DEFAULT_PRICE = {
   bottle: 2280,
   blister: 779
 };
+
+const SALES_REPORT_PRINT_CSS = `
+  #sales-report-print {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  #sales-report-print .grid {
+    display: grid !important;
+  }
+  #sales-report-print .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  #sales-report-print .gap-3 {
+    gap: 0.75rem !important;
+  }
+  #sales-report-print .gap-8 {
+    gap: 2rem !important;
+  }
+  #sales-report-print .space-y-2 > * + * {
+    margin-top: 0.5rem !important;
+  }
+  #sales-report-print .mt-3 {
+    margin-top: 0.75rem !important;
+  }
+  #sales-report-print .mt-4 {
+    margin-top: 1rem !important;
+  }
+  #sales-report-print .w-full {
+    width: 100% !important;
+  }
+  #sales-report-print .text-center {
+    text-align: center !important;
+  }
+  #sales-report-print .text-right {
+    text-align: right !important;
+  }
+  #sales-report-print .font-bold {
+    font-weight: 700 !important;
+  }
+  #sales-report-print table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  #sales-report-print th,
+  #sales-report-print td {
+    vertical-align: top !important;
+  }
+  #sales-report-print input {
+    color: #000000 !important;
+    background: transparent !important;
+  }
+`;
 
 type DetailRow = {
   memberName: string;
@@ -1096,18 +1149,22 @@ export function SalesDashboardSalesReportPage() {
       ? cashOnHandAmount
       : 0);
 
+  const handlePrintReport = async () => {
+    try {
+      await printElementById({
+        elementId: "sales-report-print",
+        title: "Daily Sales Report",
+        pageCss: "@page { size: A4 portrait; margin: 10mm; }",
+        extraCss: SALES_REPORT_PRINT_CSS
+      });
+    } catch (printError) {
+      console.error("SALES REPORT PRINT ERROR", printError);
+      alert("Unable to open the sales report print preview. Please try again.");
+    }
+  };
+
   return (
     <div className="bg-white rounded-md border border-gray-300 p-3 text-[11px] leading-tight">
-      <style>{`
-        @media print {
-          @page { size: A4 portrait; margin: 10mm; }
-          body * { visibility: hidden; }
-          #sales-report-print, #sales-report-print * { visibility: visible; }
-          #sales-report-print { position: absolute; left: 0; top: 0; width: 100%; }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
       <div className="mb-3 flex items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-2">
           <span>Report Date:</span>
@@ -1118,7 +1175,7 @@ export function SalesDashboardSalesReportPage() {
             className="border border-black px-2 py-1 text-[11px]"
           />
         </div>
-        <button type="button" onClick={() => window.print()} className="rounded border border-black px-3 py-1">
+        <button type="button" onClick={handlePrintReport} className="rounded border border-black px-3 py-1">
           Print Report
         </button>
       </div>
