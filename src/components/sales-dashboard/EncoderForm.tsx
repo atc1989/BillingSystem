@@ -509,9 +509,12 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
 
     try {
       const rows = await fetchSalesDashboardUsers();
+      if (isEncoderSaveDebugEnabled) {
+        console.log("USERNAME OPTIONS RAW", rows);
+      }
       setUsers(rows);
     } catch (error) {
-      console.error("USERS FETCH ERROR", error);
+      console.error("USERNAME OPTIONS ERROR", error);
       const message = error instanceof Error ? error.message : "Failed to load usernames.";
       setUsersLoadError(message);
       setUsers([]);
@@ -536,6 +539,12 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
     if (shouldUseExistingUserDropdown) return;
     setIsUsernameDropdownOpen(false);
   }, [shouldUseExistingUserDropdown]);
+
+  useEffect(() => {
+    if (shouldUseExistingUserDropdown && isUsernameFocused) {
+      setIsUsernameDropdownOpen(true);
+    }
+  }, [shouldUseExistingUserDropdown, isUsernameFocused]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -611,6 +620,13 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
       return username.includes(query) || memberName.includes(query);
     });
   }, [users, formData.username]);
+
+  useEffect(() => {
+    if (!isEncoderSaveDebugEnabled) return;
+    console.log("USERNAME INPUT", formData.username);
+    console.log("FILTERED USERNAMES", filteredUsers);
+    console.log("DROPDOWN OPEN", isUsernameDropdownOpen);
+  }, [formData.username, filteredUsers, isUsernameDropdownOpen]);
 
   const handleUsernameChange = (value: string) => {
     handleInputChange("username", value);
@@ -762,7 +778,7 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
             value={formData.date}
             onChange={(value) => handleInputChange("date", value)}
           />
-          <label className="block relative" ref={usernameFieldRef}>
+          <label className="block">
             <span
               className="block mb-2"
               style={{
@@ -809,7 +825,7 @@ export function EncoderForm({ onSave, savedCount }: EncoderFormProps) {
             onChange={(value) => handleInputChange("memberName", value)}
             placeholder="Enter member name"
           />
-          <label className="block">
+          <label className="block relative" ref={usernameFieldRef}>
             <span
               className="block mb-2"
               style={{
