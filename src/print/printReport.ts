@@ -9,40 +9,6 @@ type PrintElementOptions = PrintDocumentOptions & {
   elementId: string;
 };
 
-const collectStyles = (): string =>
-  Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((node) => {
-      if (node instanceof HTMLLinkElement) {
-        const href = node.href;
-        return `<link rel="stylesheet" href="${href}"${node.crossOrigin ? ` crossorigin="${node.crossOrigin}"` : ""}>`;
-      }
-      return node.outerHTML;
-    })
-    .join("\n");
-
-const waitForStyles = async (printDocument: Document): Promise<void> => {
-  const stylesheetLinks = Array.from(
-    printDocument.querySelectorAll('link[rel="stylesheet"]')
-  ) as HTMLLinkElement[];
-
-  await Promise.all(
-    stylesheetLinks.map(
-      (link) =>
-        new Promise<void>((resolve) => {
-          if (link.sheet) {
-            resolve();
-            return;
-          }
-
-          const finish = () => resolve();
-          link.addEventListener("load", finish, { once: true });
-          link.addEventListener("error", finish, { once: true });
-          window.setTimeout(finish, 2000);
-        })
-    )
-  );
-};
-
 const waitForFonts = async (printDocument: Document): Promise<void> => {
   if (!("fonts" in printDocument)) return;
 
@@ -59,6 +25,68 @@ const waitForLayout = async (printWindow: Window): Promise<void> =>
       printWindow.requestAnimationFrame(() => resolve());
     });
   });
+
+const copyComputedStyles = (sourceElement: Element, clonedElement: Element): void => {
+  if (!("style" in clonedElement)) return;
+
+  const computedStyle = window.getComputedStyle(sourceElement);
+  const targetStyle = (clonedElement as HTMLElement).style;
+
+  for (let index = 0; index < computedStyle.length; index += 1) {
+    const propertyName = computedStyle[index];
+    targetStyle.setProperty(
+      propertyName,
+      computedStyle.getPropertyValue(propertyName),
+      computedStyle.getPropertyPriority(propertyName)
+    );
+  }
+};
+
+const syncFormValues = (sourceElement: Element, clonedElement: Element): void => {
+  if (sourceElement instanceof HTMLInputElement && clonedElement instanceof HTMLInputElement) {
+    clonedElement.value = sourceElement.value;
+    if (sourceElement.checked) {
+      clonedElement.setAttribute("checked", "checked");
+    } else {
+      clonedElement.removeAttribute("checked");
+    }
+    return;
+  }
+
+  if (sourceElement instanceof HTMLTextAreaElement && clonedElement instanceof HTMLTextAreaElement) {
+    clonedElement.value = sourceElement.value;
+    clonedElement.textContent = sourceElement.value;
+    return;
+  }
+
+  if (sourceElement instanceof HTMLSelectElement && clonedElement instanceof HTMLSelectElement) {
+    clonedElement.value = sourceElement.value;
+    Array.from(clonedElement.options).forEach((option) => {
+      option.selected = option.value === sourceElement.value;
+    });
+  }
+};
+
+const inlineNodeTreeStyles = (sourceRoot: Element, clonedRoot: Element): void => {
+  copyComputedStyles(sourceRoot, clonedRoot);
+  syncFormValues(sourceRoot, clonedRoot);
+
+  const sourceChildren = Array.from(sourceRoot.children);
+  const clonedChildren = Array.from(clonedRoot.children);
+
+  sourceChildren.forEach((sourceChild, index) => {
+    const clonedChild = clonedChildren[index];
+    if (!clonedChild) return;
+    inlineNodeTreeStyles(sourceChild, clonedChild);
+  });
+};
+
+const buildPrintableMarkup = (sourceElement: HTMLElement): string => {
+  const clonedElement = sourceElement.cloneNode(true) as HTMLElement;
+  inlineNodeTreeStyles(sourceElement, clonedElement);
+  clonedElement.querySelectorAll(".no-print").forEach((node) => node.remove());
+  return clonedElement.outerHTML;
+};
 
 export async function printHtmlDocument({
   title,
@@ -102,9 +130,7 @@ export async function printHtmlDocument({
 <html>
   <head>
     <meta charset="utf-8" />
-    <base href="${window.location.origin}/" />
     <title>${title}</title>
-    ${collectStyles()}
     <style>
       ${pageCss}
       html, body {
@@ -218,7 +244,6 @@ export async function printHtmlDocument({
 </html>`);
   printDocument.close();
 
-  await waitForStyles(printDocument);
   await waitForFonts(printDocument);
   await waitForLayout(printWindow);
 
@@ -241,7 +266,7 @@ export async function printElementById({
 
   await printHtmlDocument({
     title,
-    contentHtml: element.outerHTML,
+    contentHtml: buildPrintableMarkup(element),
     pageCss,
     extraCss
   });
