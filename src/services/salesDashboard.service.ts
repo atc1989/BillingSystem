@@ -10,7 +10,7 @@ export type SalesDashboardUser = {
 };
 
 type SaveStep = "sales_entries" | "sales_entry_inventory" | "sales_entry_payments";
-const SALES_DASHBOARD_USERS_TABLE = "sales_dashboard_users";
+const USERS_DIRECTORY_TABLE = "users_directory";
 
 const isSalesSaveDebugEnabled =
   import.meta.env.DEV || import.meta.env.VITE_DEBUG_SALES_SAVE === "true";
@@ -48,28 +48,6 @@ const toBoolean = (value: unknown): boolean | null => {
 const debugSaveLog = (label: string, data: unknown) => {
   if (!isSalesSaveDebugEnabled) return;
   console.log(label, data);
-};
-
-const isMissingRelationError = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") return false;
-
-  const maybeError = error as {
-    code?: string;
-    message?: string;
-    details?: string;
-    hint?: string;
-  };
-
-  const joined = [maybeError.code, maybeError.message, maybeError.details, maybeError.hint]
-    .filter((value): value is string => typeof value === "string" && value.length > 0)
-    .join(" ");
-
-  return (
-    maybeError.code === "42P01" ||
-    maybeError.code === "PGRST205" ||
-    /relation .* does not exist/i.test(joined) ||
-    /table .* does not exist/i.test(joined)
-  );
 };
 
 const toErrorDebugMeta = (error: unknown) => {
@@ -195,70 +173,17 @@ async function insertRowsWithColumnFallback(
 
 export async function fetchSalesDashboardUsers(): Promise<SalesDashboardUser[]> {
   const { data, error } = await supabase
-    .from(SALES_DASHBOARD_USERS_TABLE)
-    .select("id, username, member_name, created_at")
+    .from(USERS_DIRECTORY_TABLE)
+    .select("*")
     .order("username", { ascending: true });
 
   if (error) throw error;
-  return (data as SalesDashboardUser[] | null) ?? [];
-}
-
-export async function ensureSalesDashboardUser(input: {
-  username: string;
-  memberName?: string;
-}): Promise<SalesDashboardUser | null> {
-  const trimmedUsername = input.username.trim();
-  const trimmedMemberName = toText(input.memberName);
-  if (!trimmedUsername) return null;
-
-  const { data: existingRows, error: existingError } = await supabase
-    .from(SALES_DASHBOARD_USERS_TABLE)
-    .select("id, username, member_name, created_at")
-    .ilike("username", trimmedUsername)
-    .limit(1);
-
-  if (existingError) throw existingError;
-
-  const existingUser = ((existingRows as SalesDashboardUser[] | null) ?? [])[0] ?? null;
-  if (existingUser) {
-    if (!existingUser.member_name && trimmedMemberName) {
-      const { error: updateError } = await supabase
-        .from(SALES_DASHBOARD_USERS_TABLE)
-        .update({ member_name: trimmedMemberName })
-        .eq("id", existingUser.id);
-
-      if (updateError && !isMissingRelationError(updateError)) {
-        throw updateError;
-      }
-      return { ...existingUser, member_name: trimmedMemberName };
-    }
-    return existingUser;
-  }
-
-  const { data, error } = await supabase
-    .from(SALES_DASHBOARD_USERS_TABLE)
-    .insert({
-      username: trimmedUsername,
-      member_name: trimmedMemberName || null
-    })
-    .select("id, username, member_name, created_at")
-    .single();
-
-  if (error) {
-    if (error.code === "23505") {
-      const { data: duplicateRows, error: duplicateError } = await supabase
-        .from(SALES_DASHBOARD_USERS_TABLE)
-        .select("id, username, member_name, created_at")
-        .ilike("username", trimmedUsername)
-        .limit(1);
-
-      if (duplicateError) throw duplicateError;
-      return ((duplicateRows as SalesDashboardUser[] | null) ?? [])[0] ?? null;
-    }
-    throw error;
-  }
-
-  return (data as SalesDashboardUser | null) ?? null;
+  return ((data as Array<Record<string, unknown>> | null) ?? []).map((row) => ({
+    id: String(row.id ?? ""),
+    username: toText(row.username),
+    member_name: toText(row.member_name) || null,
+    created_at: toText(row.created_at)
+  }));
 }
 
 export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
@@ -272,22 +197,6 @@ export async function saveSalesEntry(entry: SaleEntry): Promise<void> {
   const newMember = toBoolean(entry.newMember);
   const toBlister = toBoolean(entry.toBlister);
   const discountValue = toNumber(entry.discount);
-
-  try {
-    await ensureSalesDashboardUser({
-      username: entry.username,
-      memberName: entry.memberName
-    });
-  } catch (error) {
-    if (!isMissingRelationError(error)) {
-      throw error;
-    }
-    console.warn("USERS SOURCE WARNING", {
-      table: SALES_DASHBOARD_USERS_TABLE,
-      reason: "Missing users table. Sales entry save continued without syncing users source.",
-      error: toErrorDebugMeta(error)
-    });
-  }
 
   const salesEntryInsert: Record<string, unknown> = {
     event: toText(entry.event),
