@@ -437,7 +437,7 @@ export function SalesDashboardUsersPage() {
               </Label>
               <Select
                 value={formState.zeroOne}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setFormState((current) => ({
                     ...current,
                     zeroOne: value
@@ -464,7 +464,7 @@ export function SalesDashboardUsersPage() {
               </Label>
               <Select
                 value={formState.codePayment}
-                onValueChange={(value) =>
+                onValueChange={(value: string) =>
                   setFormState((current) => ({
                     ...current,
                     codePayment: value as UserAccountCodePayment
