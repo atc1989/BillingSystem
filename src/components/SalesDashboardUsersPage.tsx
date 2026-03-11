@@ -406,20 +406,20 @@ export function SalesDashboardUsersPage() {
   return (
     <div className="space-y-4">
       <Card className="border-slate-300 shadow-sm">
-        <CardHeader className="pb-0">
-          <CardTitle className="text-xl font-semibold text-slate-900">Users</CardTitle>
+        <CardHeader className="px-5 pt-5 pb-0">
+          <CardTitle className="text-sm font-semibold text-slate-900">Users</CardTitle>
           <CardDescription className="hidden">User form</CardDescription>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="px-5 pt-4 pb-5">
           {errorMessage ? (
             <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {errorMessage}
             </div>
           ) : null}
 
-          <div className="grid gap-4 xl:grid-cols-[1.3fr_1.3fr_1.3fr_auto_auto_auto_auto]">
-            <div className="space-y-2">
-              <Label htmlFor="users-full-name" className="text-sm font-medium text-slate-800">
+          <div className="grid items-end gap-3 xl:grid-cols-[minmax(230px,1.55fr)_minmax(180px,1fr)_minmax(180px,1fr)_auto_auto_auto_auto]">
+            <div className="min-w-0 space-y-1.5">
+              <Label htmlFor="users-full-name" className="text-xs font-medium text-slate-800">
                 Full Name
               </Label>
               <Input
@@ -427,12 +427,12 @@ export function SalesDashboardUsersPage() {
                 value={formState.fullName}
                 readOnly
                 placeholder="Select a user row"
-                className="h-10 border-slate-300 bg-white text-slate-900"
+                className="h-10 border-slate-300 bg-white text-sm text-slate-900"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="users-zero-one" className="text-sm font-medium text-slate-800">
+            <div className="min-w-0 space-y-1.5">
+              <Label htmlFor="users-zero-one" className="text-xs font-medium text-slate-800">
                 Zero One
               </Label>
               <Select
@@ -445,7 +445,7 @@ export function SalesDashboardUsersPage() {
                 }
                 disabled={zeroOneOptions.length === 0}
               >
-                <SelectTrigger id="users-zero-one" className="h-10 border-slate-300 bg-white">
+                <SelectTrigger id="users-zero-one" className="h-10 border-slate-300 bg-white text-sm">
                   <SelectValue placeholder="Select Zero One" />
                 </SelectTrigger>
                 <SelectContent>
@@ -458,8 +458,8 @@ export function SalesDashboardUsersPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="users-code-payment" className="text-sm font-medium text-slate-800">
+            <div className="min-w-0 space-y-1.5">
+              <Label htmlFor="users-code-payment" className="text-xs font-medium text-slate-800">
                 Code Payment
               </Label>
               <Select
@@ -471,7 +471,7 @@ export function SalesDashboardUsersPage() {
                   }))
                 }
               >
-                <SelectTrigger id="users-code-payment" className="h-10 border-slate-300 bg-white">
+                <SelectTrigger id="users-code-payment" className="h-10 border-slate-300 bg-white text-sm">
                   <SelectValue placeholder="Select code payment" />
                 </SelectTrigger>
                 <SelectContent>
@@ -485,7 +485,7 @@ export function SalesDashboardUsersPage() {
             </div>
 
             <div className="flex items-end">
-              <Button type="button" onClick={handleSave} disabled={isSaving} className="h-10 px-5">
+              <Button type="button" onClick={handleSave} disabled={isSaving} className="h-10 px-4 text-sm">
                 {isSaving ? "Saving..." : "Save Entry"}
               </Button>
             </div>
@@ -496,7 +496,7 @@ export function SalesDashboardUsersPage() {
                 variant="outline"
                 onClick={handleClearForm}
                 disabled={isSaving}
-                className="h-10 border-slate-300 px-5"
+                className="h-10 border-slate-300 bg-white px-4 text-sm text-slate-800"
               >
                 Clear Form
               </Button>
@@ -508,7 +508,7 @@ export function SalesDashboardUsersPage() {
                 variant="outline"
                 onClick={() => void handleSyncUsers()}
                 disabled={isLoading}
-                className="h-10 border-slate-300 px-5"
+                className="h-10 border-slate-300 bg-white px-4 text-sm text-slate-800"
               >
                 Sync Users
               </Button>
@@ -520,7 +520,7 @@ export function SalesDashboardUsersPage() {
                 variant="outline"
                 onClick={() => void handleSyncCodes()}
                 disabled={isLoading}
-                className="h-10 border-slate-300 px-5"
+                className="h-10 border-slate-300 bg-white px-4 text-sm text-slate-800"
               >
                 Sync Codes
               </Button>
