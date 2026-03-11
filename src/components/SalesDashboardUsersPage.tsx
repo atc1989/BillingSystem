@@ -375,6 +375,16 @@ export function SalesDashboardUsersPage() {
     }
   };
 
+  const handleSyncUsers = async () => {
+    await loadData();
+    toast.success("Users synced.");
+  };
+
+  const handleSyncCodes = async () => {
+    await loadData();
+    toast.success("Codes synced.");
+  };
+
   const handleExport = async () => {
     if (filteredUserAccounts.length === 0) {
       toast.error("There are no user account rows to export.");
@@ -394,35 +404,37 @@ export function SalesDashboardUsersPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="gap-3">
-          <CardTitle className="text-2xl font-semibold text-gray-900">Users</CardTitle>
-          <CardDescription>
-            Manage Zero One and Code Payment values for Sales Metrics POF user accounts using the
-            existing Billing System Supabase client.
-          </CardDescription>
+    <div className="space-y-4">
+      <Card className="border-slate-300 shadow-sm">
+        <CardHeader className="pb-0">
+          <CardTitle className="text-xl font-semibold text-slate-900">Users</CardTitle>
+          <CardDescription className="hidden">User form</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-4">
           {errorMessage ? (
-            <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {errorMessage}
             </div>
           ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-[2fr_1fr_1fr_auto]">
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_1.3fr_1.3fr_auto_auto_auto_auto]">
             <div className="space-y-2">
-              <Label htmlFor="users-full-name">Full Name</Label>
+              <Label htmlFor="users-full-name" className="text-sm font-medium text-slate-800">
+                Full Name
+              </Label>
               <Input
                 id="users-full-name"
                 value={formState.fullName}
                 readOnly
                 placeholder="Select a user row"
+                className="h-10 border-slate-300 bg-white text-slate-900"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="users-zero-one">Zero One</Label>
+              <Label htmlFor="users-zero-one" className="text-sm font-medium text-slate-800">
+                Zero One
+              </Label>
               <Select
                 value={formState.zeroOne}
                 onValueChange={(value) =>
@@ -433,7 +445,7 @@ export function SalesDashboardUsersPage() {
                 }
                 disabled={zeroOneOptions.length === 0}
               >
-                <SelectTrigger id="users-zero-one">
+                <SelectTrigger id="users-zero-one" className="h-10 border-slate-300 bg-white">
                   <SelectValue placeholder="Select Zero One" />
                 </SelectTrigger>
                 <SelectContent>
@@ -447,7 +459,9 @@ export function SalesDashboardUsersPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="users-code-payment">Code Payment</Label>
+              <Label htmlFor="users-code-payment" className="text-sm font-medium text-slate-800">
+                Code Payment
+              </Label>
               <Select
                 value={formState.codePayment}
                 onValueChange={(value) =>
@@ -457,7 +471,7 @@ export function SalesDashboardUsersPage() {
                   }))
                 }
               >
-                <SelectTrigger id="users-code-payment">
+                <SelectTrigger id="users-code-payment" className="h-10 border-slate-300 bg-white">
                   <SelectValue placeholder="Select code payment" />
                 </SelectTrigger>
                 <SelectContent>
@@ -470,63 +484,104 @@ export function SalesDashboardUsersPage() {
               </Select>
             </div>
 
-            <div className="flex items-end gap-2">
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
+            <div className="flex items-end">
+              <Button type="button" onClick={handleSave} disabled={isSaving} className="h-10 px-5">
                 {isSaving ? "Saving..." : "Save Entry"}
               </Button>
-              <Button type="button" variant="outline" onClick={handleClearForm} disabled={isSaving}>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClearForm}
+                disabled={isSaving}
+                className="h-10 border-slate-300 px-5"
+              >
                 Clear Form
               </Button>
             </div>
-          </div>
 
-          <div className="rounded-md border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-medium text-gray-900">Selected Username:</span>{" "}
-            {formState.username || "No user selected"}
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleSyncUsers()}
+                disabled={isLoading}
+                className="h-10 border-slate-300 px-5"
+              >
+                Sync Users
+              </Button>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleSyncCodes()}
+                disabled={isLoading}
+                className="h-10 border-slate-300 px-5"
+              >
+                Sync Codes
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <Card className="border-slate-300 shadow-sm">
+        <CardHeader className="flex flex-col gap-4 pb-0 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold text-gray-900">Users Table</CardTitle>
-            <CardDescription>
-              Existing Billing System users merged with any saved user-account settings.
-            </CardDescription>
+            <CardTitle className="text-xl font-semibold text-slate-900">Users With No Zero One</CardTitle>
+            <CardDescription className="hidden">Users grid</CardDescription>
           </div>
-          <div className="w-full max-w-sm space-y-2">
-            <Label htmlFor="users-table-search">Search users</Label>
+          <div className="w-full max-w-sm">
+            <Label htmlFor="users-table-search" className="sr-only">
+              Search users table
+            </Label>
             <Input
               id="users-table-search"
               value={usersSearchQuery}
               onChange={(event) => setUsersSearchQuery(event.target.value)}
-              placeholder="Search username, full name, zero one..."
+              placeholder="Search table..."
+              className="h-10 border-slate-300 bg-white"
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-slate-100/80">
               <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Zero One</TableHead>
-                <TableHead>Code Payment</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead className="text-right">Action</TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Username
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Name
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Zero One
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Code Payment
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Created At
+                </TableHead>
+                <TableHead className="h-9 px-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-slate-500">
                     Loading users...
                   </TableCell>
                 </TableRow>
               ) : filteredUsersRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-8 text-center text-slate-500">
                     {usersRows.length === 0
                       ? "No users are available yet."
                       : "No users matched your search."}
@@ -535,13 +590,21 @@ export function SalesDashboardUsersPage() {
               ) : (
                 filteredUsersRows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell>{row.username || "-"}</TableCell>
-                    <TableCell>{row.fullName || "-"}</TableCell>
-                    <TableCell>{row.zeroOne || "-"}</TableCell>
-                    <TableCell>{row.codePayment || "-"}</TableCell>
-                    <TableCell>{row.createdAt ? formatDateTime(row.createdAt) : "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <Button type="button" variant="outline" size="sm" onClick={() => handleEditRow(row)}>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.username || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.fullName || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.zeroOne || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.codePayment || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">
+                      {row.createdAt ? formatDateTime(row.createdAt) : "-"}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="border-slate-300 bg-white"
+                        onClick={() => handleEditRow(row)}
+                      >
                         Edit
                       </Button>
                     </TableCell>
@@ -553,65 +616,99 @@ export function SalesDashboardUsersPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <Card className="border-slate-300 shadow-sm">
+        <CardHeader className="flex flex-col gap-4 pb-0 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-1">
-            <CardTitle className="text-lg font-semibold text-gray-900">User Accounts Table</CardTitle>
-            <CardDescription>
-              Direct `user_account` rows adapted from the transferred Next.js module into frontend
-              Supabase service calls.
-            </CardDescription>
+            <CardTitle className="text-xl font-semibold text-slate-900">User Accounts</CardTitle>
+            <CardDescription className="hidden">User accounts grid</CardDescription>
           </div>
           <div className="flex w-full max-w-xl flex-col gap-3 md:flex-row md:items-end">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="user-accounts-search">Search user accounts</Label>
+            <div className="flex-1">
+              <Label htmlFor="user-accounts-search" className="sr-only">
+                Search user accounts
+              </Label>
               <Input
                 id="user-accounts-search"
                 value={accountsSearchQuery}
                 onChange={(event) => setAccountsSearchQuery(event.target.value)}
-                placeholder="Search full name, username, sponsor, zero one..."
+                placeholder="Search table..."
+                className="h-10 border-slate-300 bg-white"
               />
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => void loadData()} disabled={isLoading}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void loadData()}
+                disabled={isLoading}
+                className="h-10 border-slate-300 px-5"
+              >
                 Refresh
               </Button>
-              <Button type="button" onClick={() => void handleExport()} disabled={isExporting}>
+              <Button type="button" onClick={() => void handleExport()} disabled={isExporting} className="h-10 px-5">
                 {isExporting ? "Exporting..." : "Excel"}
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <Table className="min-w-[1200px]">
-            <TableHeader>
+            <TableHeader className="bg-slate-100/80">
               <TableRow>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Sponsor</TableHead>
-                <TableHead>Placement</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Account Type</TableHead>
-                <TableHead>Zero One</TableHead>
-                <TableHead>Code Payment</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Province</TableHead>
-                <TableHead>Region</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Date Created</TableHead>
-                <TableHead>Date Updated</TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Full Name
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Username
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Sponsor
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Placement
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Group
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Account Type
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Zero One
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Code Payment
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  City
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Province
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Region
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Country
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Date Created
+                </TableHead>
+                <TableHead className="h-9 px-3 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  Date Updated
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={14} className="py-8 text-center text-slate-500">
                     Loading user accounts...
                   </TableCell>
                 </TableRow>
               ) : filteredUserAccounts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} className="py-8 text-center text-muted-foreground">
+                  <TableCell colSpan={14} className="py-8 text-center text-slate-500">
                     {userAccounts.length === 0
                       ? "No user account rows found. Apply supabase/user_account.sql if this table does not exist yet."
                       : "No user account rows matched your search."}
@@ -620,20 +717,24 @@ export function SalesDashboardUsersPage() {
               ) : (
                 filteredUserAccounts.map((row) => (
                   <TableRow key={row.id || row.username}>
-                    <TableCell>{row.fullName || "-"}</TableCell>
-                    <TableCell>{row.username || "-"}</TableCell>
-                    <TableCell>{row.sponsor || "-"}</TableCell>
-                    <TableCell>{row.placement || "-"}</TableCell>
-                    <TableCell>{row.group || "-"}</TableCell>
-                    <TableCell>{row.accountType || "-"}</TableCell>
-                    <TableCell>{row.zeroOne || "-"}</TableCell>
-                    <TableCell>{row.codePayment || "-"}</TableCell>
-                    <TableCell>{row.city || "-"}</TableCell>
-                    <TableCell>{row.province || "-"}</TableCell>
-                    <TableCell>{row.region || "-"}</TableCell>
-                    <TableCell>{row.country || "-"}</TableCell>
-                    <TableCell>{row.dateCreated ? formatDateTime(row.dateCreated) : "-"}</TableCell>
-                    <TableCell>{row.dateUpdated ? formatDateTime(row.dateUpdated) : "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.fullName || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.username || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.sponsor || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.placement || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.group || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.accountType || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.zeroOne || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.codePayment || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.city || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.province || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.region || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">{row.country || "-"}</TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">
+                      {row.dateCreated ? formatDateTime(row.dateCreated) : "-"}
+                    </TableCell>
+                    <TableCell className="px-3 py-3 text-sm text-slate-900">
+                      {row.dateUpdated ? formatDateTime(row.dateUpdated) : "-"}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
