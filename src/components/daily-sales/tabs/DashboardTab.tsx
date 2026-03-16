@@ -288,10 +288,10 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
   ];
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <div className="flex flex-wrap items-start gap-6">
-          <div className="flex min-w-[220px] flex-col gap-2">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-[220px_220px_260px_84px_minmax(0,1fr)] xl:items-end">
+          <div className="grid gap-2">
             <div className={filterLabelClassName}>FROM</div>
             <input
               type="date"
@@ -301,7 +301,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             />
           </div>
 
-          <div className="flex min-w-[220px] flex-col gap-2">
+          <div className="grid gap-2">
             <div className={filterLabelClassName}>TO</div>
             <input
               type="date"
@@ -311,7 +311,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             />
           </div>
 
-          <div className="flex min-w-[260px] flex-col gap-2">
+          <div className="grid gap-2">
             <div className={filterLabelClassName}>MODE OF PAYMENT</div>
             <select
               value={pendingPaymentMode}
@@ -325,10 +325,10 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   {mode}
                 </option>
                 ))}
-              </select>
+            </select>
           </div>
 
-          <div className="flex items-end pt-[26px]">
+          <div className="flex items-end xl:pt-[26px]">
             <Button
               variant="outline"
               className="h-10 rounded-md border-slate-300 bg-white px-5 text-sm font-medium text-slate-900 hover:bg-slate-50"
@@ -342,7 +342,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </Button>
           </div>
 
-          <div className="ml-auto flex min-w-[260px] flex-col gap-2">
+          <div className="grid gap-2 xl:ml-auto xl:w-[260px] xl:justify-self-end">
             <div className={filterLabelClassName}>SEARCH</div>
             <input
               value={searchQuery}

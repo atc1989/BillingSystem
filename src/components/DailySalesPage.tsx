@@ -49,7 +49,7 @@ export function DailySalesPage() {
   const triggerRefresh = () => setRefreshTick((value) => value + 1);
 
   return (
-    <main className="mx-auto max-w-[1320px] space-y-4">
+    <main className="mx-auto max-w-[1320px] space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <DailySalesTabs activeTab={activeTab} onTabChange={onTabChange} />
       </div>
