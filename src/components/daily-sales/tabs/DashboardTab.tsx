@@ -291,28 +291,28 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
     <section className="space-y-3">
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
         <div className="flex flex-wrap items-start gap-6">
-          <label className="flex min-w-[220px] flex-col gap-2">
-            <span className={filterLabelClassName}>FROM</span>
+          <div className="flex min-w-[220px] flex-col gap-2">
+            <div className={filterLabelClassName}>FROM</div>
             <input
               type="date"
               value={pendingFromDate}
               onChange={(event) => setPendingFromDate(event.target.value)}
               className={filterFieldClassName}
             />
-          </label>
+          </div>
 
-          <label className="flex min-w-[220px] flex-col gap-2">
-            <span className={filterLabelClassName}>TO</span>
+          <div className="flex min-w-[220px] flex-col gap-2">
+            <div className={filterLabelClassName}>TO</div>
             <input
               type="date"
               value={pendingToDate}
               onChange={(event) => setPendingToDate(event.target.value)}
               className={filterFieldClassName}
             />
-          </label>
+          </div>
 
-          <label className="flex min-w-[260px] flex-col gap-2">
-            <span className={filterLabelClassName}>MODE OF PAYMENT</span>
+          <div className="flex min-w-[260px] flex-col gap-2">
+            <div className={filterLabelClassName}>MODE OF PAYMENT</div>
             <select
               value={pendingPaymentMode}
               onChange={(event) =>
@@ -324,9 +324,9 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                 <option key={mode} value={mode}>
                   {mode}
                 </option>
-              ))}
-            </select>
-          </label>
+                ))}
+              </select>
+          </div>
 
           <div className="flex items-end pt-[26px]">
             <Button
@@ -342,15 +342,15 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </Button>
           </div>
 
-          <label className="ml-auto flex min-w-[260px] flex-col gap-2">
-            <span className={filterLabelClassName}>SEARCH</span>
+          <div className="ml-auto flex min-w-[260px] flex-col gap-2">
+            <div className={filterLabelClassName}>SEARCH</div>
             <input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search table..."
               className={filterFieldClassName}
             />
-          </label>
+          </div>
         </div>
       </div>
 
