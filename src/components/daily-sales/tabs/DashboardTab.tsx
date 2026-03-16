@@ -289,10 +289,10 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
 
   return (
     <section className="space-y-3">
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3 lg:flex-nowrap lg:gap-4">
-            <label className="block sm:w-[172px] lg:w-[176px]">
+      <div className="rounded-xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-14">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3.5 lg:flex-nowrap lg:gap-5">
+            <label className="block sm:w-[178px] lg:w-[182px]">
               <span className={filterLabelClassName}>FROM</span>
               <input
                 type="date"
@@ -302,7 +302,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               />
             </label>
 
-            <label className="block sm:w-[172px] lg:w-[176px]">
+            <label className="block sm:w-[178px] lg:w-[182px]">
               <span className={filterLabelClassName}>TO</span>
               <input
                 type="date"
@@ -312,7 +312,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               />
             </label>
 
-            <label className="block sm:w-[180px] lg:w-[230px]">
+            <label className="block sm:w-[190px] lg:w-[248px]">
               <span className={filterLabelClassName}>MODE OF PAYMENT</span>
               <select
                 value={pendingPaymentMode}
@@ -332,7 +332,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             <div className="flex items-end">
               <Button
                 variant="outline"
-                className="h-9 w-full rounded-md border-slate-300 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50 sm:w-auto"
+                className="h-9 w-full rounded-md border-slate-300 bg-white px-0 text-sm font-medium text-slate-900 hover:bg-slate-50 sm:w-[78px] lg:w-[82px]"
                 onClick={() => {
                   setFromDate(pendingFromDate);
                   setToDate(pendingToDate);
@@ -345,7 +345,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
           </div>
 
           <div className="lg:ml-auto lg:flex lg:justify-end">
-            <label className="block lg:w-[235px] xl:w-[250px]">
+            <label className="block lg:w-[230px] xl:w-[238px]">
               <span className={filterLabelClassName}>SEARCH</span>
               <input
                 value={searchQuery}
