@@ -290,7 +290,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
   return (
     <section className="space-y-4">
       <div className="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-[220px_220px_260px_84px_minmax(0,1fr)] xl:items-end">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-[170px_170px_220px_84px_minmax(180px,1fr)] lg:items-end">
           <div className="grid gap-2">
             <div className={filterLabelClassName}>FROM</div>
             <input
@@ -328,7 +328,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </select>
           </div>
 
-          <div className="flex items-end xl:pt-[26px]">
+          <div className="flex items-end lg:pt-[26px]">
             <Button
               variant="outline"
               className="h-10 rounded-md border-slate-300 bg-white px-5 text-sm font-medium text-slate-900 hover:bg-slate-50"
@@ -342,7 +342,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </Button>
           </div>
 
-          <div className="grid gap-2 xl:ml-auto xl:w-[260px] xl:justify-self-end">
+          <div className="grid gap-2 lg:ml-auto lg:w-[220px] lg:justify-self-end">
             <div className={filterLabelClassName}>SEARCH</div>
             <input
               value={searchQuery}
