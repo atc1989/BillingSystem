@@ -6,6 +6,7 @@ import { SalesDashboardSalesReportPage } from "../components/SalesDashboardSales
 import { SalesDashboardUsersPage } from "../components/SalesDashboardUsersPage";
 import { InventoryReportPage } from "../components/inventory-report-page";
 import { ReportsPage } from "../components/reports-page";
+import { DailySalesPage } from "../components/DailySalesPage";
 import type { SaleEntry } from "../types/sales";
 import {
   deleteSalesEntry,
@@ -270,6 +271,7 @@ function SalesDashboardReportsRoute() {
 export const salesDashboardRoutes = (
   <Route path="/sales-dashboard" element={<SalesDashboardStateShell />}>
     <Route index element={<Navigate to="encoder" replace />} />
+    <Route path="daily-sales" element={<DailySalesPage />} />
     <Route path="encoder" element={<SalesDashboardEncoderRoute />} />
     <Route path="inventory-report" element={<InventoryReportPage />} />
     <Route path="sales-report" element={<SalesDashboardSalesReportRoute />} />
