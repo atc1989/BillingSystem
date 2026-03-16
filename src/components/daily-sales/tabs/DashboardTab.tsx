@@ -290,9 +290,9 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
   return (
     <section className="space-y-3">
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2.5">
-            <label className="block sm:w-[172px]">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3 lg:flex-nowrap lg:gap-4">
+            <label className="block sm:w-[172px] lg:w-[176px]">
               <span className={filterLabelClassName}>FROM</span>
               <input
                 type="date"
@@ -302,7 +302,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               />
             </label>
 
-            <label className="block sm:w-[172px]">
+            <label className="block sm:w-[172px] lg:w-[176px]">
               <span className={filterLabelClassName}>TO</span>
               <input
                 type="date"
@@ -312,7 +312,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               />
             </label>
 
-            <label className="block sm:w-[180px]">
+            <label className="block sm:w-[180px] lg:w-[230px]">
               <span className={filterLabelClassName}>MODE OF PAYMENT</span>
               <select
                 value={pendingPaymentMode}
@@ -344,15 +344,17 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </div>
           </div>
 
-          <label className="block lg:w-[170px] xl:w-[172px]">
-            <span className={filterLabelClassName}>SEARCH</span>
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search table..."
-              className={filterFieldClassName}
-            />
-          </label>
+          <div className="lg:ml-auto lg:flex lg:justify-end">
+            <label className="block lg:w-[235px] xl:w-[250px]">
+              <span className={filterLabelClassName}>SEARCH</span>
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search table..."
+                className={filterFieldClassName}
+              />
+            </label>
+          </div>
         </div>
       </div>
 
