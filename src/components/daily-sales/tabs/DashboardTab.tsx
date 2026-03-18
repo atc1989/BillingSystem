@@ -16,15 +16,6 @@ import {
 import { listDailySalesEntries } from "@/services/dailySales.service";
 import type { DailySalesRecord, PaymentMode } from "@/types/dailySales";
 
-const filterLabelClassName =
-  "text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500";
-const filterFieldClassName =
-  "h-11 w-full rounded-xl border border-[#d8e0ec] bg-white px-4 text-sm text-slate-900 shadow-[inset_0_1px_2px_rgba(15,23,42,0.02)] outline-none transition focus:border-[#9aa8bf] focus:ring-4 focus:ring-[#dfe9ff] placeholder:text-slate-400";
-const dashboardCardClassName =
-  "rounded-[22px] border border-[#e4e9f2] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.05)]";
-const summaryCardClassName =
-  "rounded-[20px] border border-[#e4e9f2] bg-white px-5 py-5 shadow-[0_10px_24px_rgba(15,23,42,0.04)]";
-
 const fallbackRows: DailySalesRecord[] = [
   {
     id: "fallback-1",
@@ -228,6 +219,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
     };
 
     void loadRows();
+
     return () => {
       isMounted = false;
     };
@@ -292,11 +284,11 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
   ];
 
   return (
-    <section className="w-full space-y-6">
-      <div className={`${dashboardCardClassName} w-full px-5 py-5 sm:px-6 sm:py-6`}>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 xl:items-end">
-          <div className="flex flex-col gap-2">
-            <label className={filterLabelClassName} htmlFor="dashboard-from-date">
+    <section className="daily-sales-dashboard">
+      <div className="daily-sales-dashboard__card daily-sales-dashboard__filter-card">
+        <div className="daily-sales-dashboard__filters">
+          <div className="daily-sales-dashboard__filter">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-from-date">
               From
             </label>
             <input
@@ -304,12 +296,12 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               type="date"
               value={pendingFromDate}
               onChange={(event) => setPendingFromDate(event.target.value)}
-              className={filterFieldClassName}
+              className="daily-sales-dashboard__field"
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className={filterLabelClassName} htmlFor="dashboard-to-date">
+          <div className="daily-sales-dashboard__filter">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-to-date">
               To
             </label>
             <input
@@ -317,12 +309,15 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               type="date"
               value={pendingToDate}
               onChange={(event) => setPendingToDate(event.target.value)}
-              className={filterFieldClassName}
+              className="daily-sales-dashboard__field"
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className={filterLabelClassName} htmlFor="dashboard-payment-mode">
+          <div className="daily-sales-dashboard__filter">
+            <label
+              className="daily-sales-dashboard__label"
+              htmlFor="dashboard-payment-mode"
+            >
               Mode of Payment
             </label>
             <select
@@ -331,7 +326,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               onChange={(event) =>
                 setPendingPaymentMode(event.target.value as PaymentMode)
               }
-              className={filterFieldClassName}
+              className="daily-sales-dashboard__field"
             >
               {paymentModes.map((mode) => (
                 <option key={mode} value={mode}>
@@ -341,11 +336,10 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </select>
           </div>
 
-          <div className="flex flex-col justify-end gap-2">
-            <span className="sr-only">Apply filters</span>
+          <div className="daily-sales-dashboard__button-wrap">
             <Button
               variant="outline"
-              className="h-11 rounded-xl border-[#d8e0ec] bg-[#f8fafc] px-5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-100"
+              className="daily-sales-dashboard__apply"
               onClick={() => {
                 setFromDate(pendingFromDate);
                 setToDate(pendingToDate);
@@ -356,8 +350,8 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </Button>
           </div>
 
-          <div className="flex w-full flex-col gap-2">
-            <label className={filterLabelClassName} htmlFor="dashboard-search">
+          <div className="daily-sales-dashboard__filter daily-sales-dashboard__search">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-search">
               Search
             </label>
             <input
@@ -365,29 +359,27 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search recent sales..."
-              className={filterFieldClassName}
+              className="daily-sales-dashboard__field"
             />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="daily-sales-dashboard__summary-grid">
         {summaryItems.map((item) => (
-          <div key={item.label} className={summaryCardClassName}>
-            <p className="text-sm font-semibold text-slate-500">{item.label}</p>
-            <p className="mt-3 text-[1.75rem] font-semibold leading-none text-[#0f1b3d]">
-              {item.value}
-            </p>
+          <div key={item.label} className="daily-sales-dashboard__summary-card">
+            <p className="daily-sales-dashboard__summary-label">{item.label}</p>
+            <p className="daily-sales-dashboard__summary-value">{item.value}</p>
           </div>
         ))}
       </div>
 
-      <div className={`${dashboardCardClassName} w-full overflow-hidden`}>
-        <div className="flex flex-col gap-3 border-b border-[#eef2f7] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <h2 className="text-lg font-semibold text-[#0f1b3d]">Recent Sales</h2>
+      <div className="daily-sales-dashboard__card daily-sales-dashboard__table-card">
+        <div className="daily-sales-dashboard__table-header">
+          <h2 className="daily-sales-dashboard__title">Recent Sales</h2>
           <Button
             size="sm"
-            className="h-9 rounded-xl bg-[#0f1b3d] px-4 text-xs font-semibold tracking-[0.08em] text-white shadow-[0_10px_24px_rgba(15,27,61,0.18)] hover:bg-[#162958] sm:self-start"
+            className="daily-sales-dashboard__export"
             onClick={() =>
               downloadCsv(
                 "daily-sales-dashboard.csv",
@@ -423,96 +415,54 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
         </div>
 
         {isLoading ? (
-          <p className="px-5 pt-4 text-sm text-slate-500 sm:px-6">
-            Loading daily sales...
-          </p>
+          <p className="daily-sales-dashboard__message">Loading daily sales...</p>
         ) : null}
         {errorMessage ? (
-          <p className="px-5 pt-4 text-sm text-amber-600 sm:px-6">{errorMessage}</p>
+          <p className="daily-sales-dashboard__message daily-sales-dashboard__message--error">
+            {errorMessage}
+          </p>
         ) : null}
 
-        <Table className="min-w-[1120px] text-sm">
-          <TableHeader className="bg-[#fbfcfe]">
-            <TableRow className="border-b border-[#e8edf5] hover:bg-[#fbfcfe]">
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:px-6">
-                POF NUMBER
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                DATE
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                MEMBER NAME
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                ZERO ONE
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                PACKAGE
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                BOTTLES
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                BLISTERS
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                SALES
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                MODE OF PAYMENT
-              </TableHead>
-              <TableHead className="h-12 px-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:px-6">
-                STATUS
-              </TableHead>
+        <Table className="daily-sales-dashboard__table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>POF NUMBER</TableHead>
+              <TableHead>DATE</TableHead>
+              <TableHead>MEMBER NAME</TableHead>
+              <TableHead>ZERO ONE</TableHead>
+              <TableHead>PACKAGE</TableHead>
+              <TableHead>BOTTLES</TableHead>
+              <TableHead>BLISTERS</TableHead>
+              <TableHead>SALES</TableHead>
+              <TableHead>MODE OF PAYMENT</TableHead>
+              <TableHead>STATUS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {hasRealRows && filteredRows.length === 0 ? (
-              <TableRow className="hover:bg-white">
-                <TableCell
-                  colSpan={10}
-                  className="px-5 py-12 text-center text-sm text-slate-500"
-                >
+              <TableRow>
+                <TableCell colSpan={10} className="daily-sales-dashboard__empty">
                   No recent sales found for the selected filters.
                 </TableCell>
               </TableRow>
             ) : (
               displayRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="border-b border-[#edf2f7] bg-white hover:bg-[#f8fafc]"
-                >
-                  <TableCell className="px-4 py-4 text-[13px] font-medium text-slate-900 sm:px-6">
+                <TableRow key={row.id}>
+                  <TableCell className="daily-sales-dashboard__cell-primary">
                     {row.pofNumber}
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.date}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-800">
-                    {row.memberName}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.zeroOne}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.packageType}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.bottles}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.blisters}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] font-semibold text-[#0f1b3d]">
+                  <TableCell>{row.date}</TableCell>
+                  <TableCell>{row.memberName}</TableCell>
+                  <TableCell>{row.zeroOne}</TableCell>
+                  <TableCell>{row.packageType}</TableCell>
+                  <TableCell>{row.bottles}</TableCell>
+                  <TableCell>{row.blisters}</TableCell>
+                  <TableCell className="daily-sales-dashboard__cell-sales">
                     {formatCurrency(row.sales)}
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] text-slate-700">
-                    {row.paymentMode}
-                  </TableCell>
-                  <TableCell className="px-4 py-4 text-[13px] sm:px-6">
-                    <span className="inline-flex rounded-full bg-[#eef4ff] px-3 py-1 text-[12px] font-medium text-[#1d3b72]">
-                      {row.status}
-                    </span>
+                  <TableCell>{row.paymentMode}</TableCell>
+                  <TableCell>
+                    <span className="daily-sales-dashboard__status">{row.status}</span>
                   </TableCell>
                 </TableRow>
               ))

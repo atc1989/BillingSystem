@@ -8,6 +8,7 @@ import { InventoryReportTab } from "@/components/daily-sales/tabs/InventoryRepor
 import { SalesReportTab } from "@/components/daily-sales/tabs/SalesReportTab";
 import { UsersTab } from "@/components/daily-sales/tabs/UsersTab";
 import { SalesMetricsTab } from "@/components/daily-sales/tabs/SalesMetricsTab";
+import "@/components/daily-sales/DailySalesDashboard.css";
 
 const validTabIds: DailySalesTabId[] = [
   "dashboard",
@@ -49,9 +50,9 @@ export function DailySalesPage() {
   const triggerRefresh = () => setRefreshTick((value) => value + 1);
 
   return (
-    <main className="w-full">
-      <div className="mx-auto flex w-full max-w-[1300px] flex-col gap-6">
-        <div className="rounded-[22px] border border-[#e4e9f2] bg-white/75 px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.04)] backdrop-blur-sm">
+    <main className="daily-sales-page">
+      <div className="daily-sales-page__inner">
+        <div className="daily-sales-tabs-shell">
           <DailySalesTabs activeTab={activeTab} onTabChange={onTabChange} />
         </div>
 

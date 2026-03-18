@@ -27,16 +27,14 @@ export function DailySalesTabs({
   onTabChange: (tabId: DailySalesTabId) => void;
 }) {
   return (
-    <div className="w-full">
-      <div className="flex flex-wrap items-center gap-2">
+    <div>
+      <div className="daily-sales-tabs-row">
         {tabItems.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={`rounded-xl px-4 py-2.5 text-[13px] font-medium transition-all ${
-              activeTab === item.id
-                ? "bg-[#0f1b3d] text-white shadow-[0_10px_24px_rgba(15,27,61,0.18)]"
-                : "text-slate-700 hover:bg-[#eef2f8] hover:text-[#0f1b3d]"
+            className={`daily-sales-tab ${
+              activeTab === item.id ? "daily-sales-tab--active" : ""
             }`}
             onClick={() => onTabChange(item.id)}
           >
