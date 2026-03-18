@@ -1,6 +1,5 @@
 .daily-sales-reports {
   width: 100%;
-  max-width: 1000px;
   align-self: flex-start;
   display: flex;
   flex-direction: column;
