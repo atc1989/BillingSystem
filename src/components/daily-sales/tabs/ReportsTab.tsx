@@ -272,7 +272,7 @@ export function ReportsTab({
                 )
               }
             >
-              Export CSV
+              Excel
             </button>
           </div>
           {isLoading ? (
@@ -339,15 +339,19 @@ export function ReportsTab({
                   ))
                 )}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total:</td>
+                  <td />
+                  <td />
+                  <td>{formatPesoShort(totals.totalSales)}</td>
+                  <td />
+                  <td>{totals.totalBottles}</td>
+                  <td>{totals.totalBlisters}</td>
+                  <td />
+                </tr>
+              </tfoot>
             </Table>
-          </div>
-          <div className="daily-sales-reports__totals">
-            <span>Total:</span>
-            <div className="daily-sales-reports__totals-values">
-              <span>Sales: {formatPesoShort(totals.totalSales)}</span>
-              <span>Bottles: {totals.totalBottles}</span>
-              <span>Blisters: {totals.totalBlisters}</span>
-            </div>
           </div>
         </div>
       </section>
