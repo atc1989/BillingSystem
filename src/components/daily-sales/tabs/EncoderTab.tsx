@@ -515,7 +515,7 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
               </div>
             </div>
 
-            <div className="daily-sales-encoder__grid">
+            <div className="daily-sales-encoder__grid daily-sales-encoder__grid--quad">
               <div className="daily-sales-encoder__field">
                 <label className="daily-sales-encoder__label">Mode of Payment</label>
                 <select
@@ -563,7 +563,7 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
                 />
               </div>
 
-              <div className="daily-sales-encoder__field">
+              <div className="daily-sales-encoder__field daily-sales-encoder__field--desktop-row-start">
                 <label className="daily-sales-encoder__label">Mode of Payment (2)</label>
                 <select
                   value={form.paymentModeTwo}
@@ -631,7 +631,7 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
               </div>
             </div>
 
-            <div className="daily-sales-encoder__grid">
+            <div className="daily-sales-encoder__grid daily-sales-encoder__grid--quad">
               <div className="daily-sales-encoder__field">
                 <label className="daily-sales-encoder__label">Released (Bottle)</label>
                 <input
