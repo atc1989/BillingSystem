@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { DailySalesDialog } from "@/components/daily-sales/DailySalesDialog";
 import { SectionPrintPreviewDialog } from "@/components/daily-sales/SectionPrintPreviewDialog";
+import "@/components/daily-sales/DailySalesSalesReport.css";
 import {
   AmountRow,
   cashDenominations,
   defaultCashPieces,
-  fieldClassName,
   formatCurrency,
   formatDateDMYY,
   paymentTypeTableIds,
@@ -26,17 +24,11 @@ import {
   persistCashOnHandLocally,
 } from "@/services/dailySales.service";
 import type { CashFieldId, CashOnHandPieces, DailySalesRecord } from "@/types/dailySales";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
-function buildPackageBreakdown(rows: DailySalesRecord[], memberType: "ALL" | "STOCKIST" | "CENTER"): PackageRow[] {
+function buildPackageBreakdown(
+  rows: DailySalesRecord[],
+  memberType: "ALL" | "STOCKIST" | "CENTER",
+): PackageRow[] {
   const scoped = rows.filter((row) => {
     const normalizedMember = row.memberType.trim().toUpperCase();
     if (memberType === "ALL") return true;
@@ -46,18 +38,39 @@ function buildPackageBreakdown(rows: DailySalesRecord[], memberType: "ALL" | "ST
   return [
     {
       label: "Platinum",
-      qty: scoped.filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "PLATINUM").reduce((sum, row) => sum + row.quantity, 0),
-      price: memberType === "STOCKIST" ? getDailySalesNetPrice("STOCKIST", "PLATINUM") : memberType === "CENTER" ? getDailySalesNetPrice("CENTER", "PLATINUM") : getDailySalesPackagePrice("PLATINUM"),
+      qty: scoped
+        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "PLATINUM")
+        .reduce((sum, row) => sum + row.quantity, 0),
+      price:
+        memberType === "STOCKIST"
+          ? getDailySalesNetPrice("STOCKIST", "PLATINUM")
+          : memberType === "CENTER"
+            ? getDailySalesNetPrice("CENTER", "PLATINUM")
+            : getDailySalesPackagePrice("PLATINUM"),
     },
     {
       label: "Gold",
-      qty: scoped.filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "GOLD").reduce((sum, row) => sum + row.quantity, 0),
-      price: memberType === "STOCKIST" ? getDailySalesNetPrice("STOCKIST", "GOLD") : memberType === "CENTER" ? getDailySalesNetPrice("CENTER", "GOLD") : getDailySalesPackagePrice("GOLD"),
+      qty: scoped
+        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "GOLD")
+        .reduce((sum, row) => sum + row.quantity, 0),
+      price:
+        memberType === "STOCKIST"
+          ? getDailySalesNetPrice("STOCKIST", "GOLD")
+          : memberType === "CENTER"
+            ? getDailySalesNetPrice("CENTER", "GOLD")
+            : getDailySalesPackagePrice("GOLD"),
     },
     {
       label: "Silver",
-      qty: scoped.filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "SILVER").reduce((sum, row) => sum + row.quantity, 0),
-      price: memberType === "STOCKIST" ? getDailySalesNetPrice("STOCKIST", "SILVER") : memberType === "CENTER" ? getDailySalesNetPrice("CENTER", "SILVER") : getDailySalesPackagePrice("SILVER"),
+      qty: scoped
+        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "SILVER")
+        .reduce((sum, row) => sum + row.quantity, 0),
+      price:
+        memberType === "STOCKIST"
+          ? getDailySalesNetPrice("STOCKIST", "SILVER")
+          : memberType === "CENTER"
+            ? getDailySalesNetPrice("CENTER", "SILVER")
+            : getDailySalesPackagePrice("SILVER"),
     },
   ];
 }
@@ -66,12 +79,16 @@ function buildRetailBreakdown(rows: DailySalesRecord[]): PackageRow[] {
   return [
     {
       label: "SynBIOTIC+ (Bottle)",
-      qty: rows.filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "RETAIL").reduce((sum, row) => sum + row.bottles, 0),
+      qty: rows
+        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "RETAIL")
+        .reduce((sum, row) => sum + row.bottles, 0),
       price: 2280,
     },
     {
       label: "SynBIOTIC+ (Blister)",
-      qty: rows.filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "BLISTER").reduce((sum, row) => sum + row.blisters, 0),
+      qty: rows
+        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "BLISTER")
+        .reduce((sum, row) => sum + row.blisters, 0),
       price: 1299,
     },
     {
@@ -133,6 +150,25 @@ function buildPaymentTypeRows(rows: DailySalesRecord[]) {
   });
 }
 
+function getPackageTotal(rows: PackageRow[]) {
+  return rows.reduce((sum, row) => sum + row.qty * row.price, 0);
+}
+
+function ReportBox({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="daily-sales-sales-report__box">
+      <div className="daily-sales-sales-report__box-title">{title}</div>
+      {children}
+    </section>
+  );
+}
+
 function PackageTable({
   id,
   title,
@@ -146,70 +182,142 @@ function PackageTable({
   totalLabel: string;
   includeGrandTotal?: boolean;
 }) {
-  const total = rows.reduce((sum, row) => sum + row.qty * row.price, 0);
+  const total = getPackageTotal(rows);
 
   return (
-    <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-      <Table id={id} className="text-xs">
-        <TableHeader className="bg-slate-50">
-          <TableRow>
-            <TableHead>{title}</TableHead>
-            <TableHead>QTY</TableHead>
-            <TableHead>PRICE</TableHead>
-            <TableHead>AMOUNT TOTAL</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <ReportBox title={title}>
+      <table id={id} className="daily-sales-sales-report__table">
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th className="daily-sales-sales-report__center">Qty</th>
+            <th className="daily-sales-sales-report__numeric">Price</th>
+            <th className="daily-sales-sales-report__numeric">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
           {rows.map((row) => (
-            <TableRow key={`${id}-${row.label}`}>
-              <TableCell>{row.label}</TableCell>
-              <TableCell>{row.qty}</TableCell>
-              <TableCell>{formatCurrency(row.price)}</TableCell>
-              <TableCell>{formatCurrency(row.qty * row.price)}</TableCell>
-            </TableRow>
+            <tr key={`${id}-${row.label}`}>
+              <td>{row.label}</td>
+              <td className="daily-sales-sales-report__center">{row.qty}</td>
+              <td className="daily-sales-sales-report__numeric">{formatCurrency(row.price)}</td>
+              <td className="daily-sales-sales-report__numeric">
+                {formatCurrency(row.qty * row.price)}
+              </td>
+            </tr>
           ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={3}>{totalLabel}</TableCell>
-            <TableCell>{formatCurrency(total)}</TableCell>
-          </TableRow>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={3}>{totalLabel}</td>
+            <td className="daily-sales-sales-report__numeric">{formatCurrency(total)}</td>
+          </tr>
           {includeGrandTotal ? (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center">GRAND TOTAL</TableCell>
-              <TableCell>{formatCurrency(total)}</TableCell>
-            </TableRow>
+            <tr>
+              <td colSpan={3}>Grand Total</td>
+              <td className="daily-sales-sales-report__numeric">{formatCurrency(total)}</td>
+            </tr>
           ) : null}
-        </TableFooter>
-      </Table>
-    </Card>
+        </tfoot>
+      </table>
+    </ReportBox>
   );
 }
 
-function PaymentTable({ id, title, rows }: { id: string; title: string; rows: AmountRow[] }) {
+function AmountTable({
+  id,
+  title,
+  rows,
+  totalLabel = "Total",
+}: {
+  id: string;
+  title: string;
+  rows: AmountRow[];
+  totalLabel?: string;
+}) {
   const total = rows.reduce((sum, row) => sum + row.amount, 0);
+
   return (
-    <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-      <Table id={id} className="text-xs">
-        <TableHeader className="bg-slate-50">
-          <TableRow><TableHead colSpan={2}>{title}</TableHead></TableRow>
-        </TableHeader>
-        <TableBody>
+    <ReportBox title={title}>
+      <table id={id} className="daily-sales-sales-report__table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th className="daily-sales-sales-report__numeric">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
           {rows.map((row) => (
-            <TableRow key={`${id}-${row.label}`}>
-              <TableCell>{row.label}</TableCell>
-              <TableCell>{formatCurrency(row.amount)}</TableCell>
-            </TableRow>
+            <tr key={`${id}-${row.label}`}>
+              <td>{row.label}</td>
+              <td className="daily-sales-sales-report__numeric">{formatCurrency(row.amount)}</td>
+            </tr>
           ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell className="text-center">TOTAL</TableCell>
-            <TableCell>{formatCurrency(total)}</TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
-    </Card>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td>{totalLabel}</td>
+            <td className="daily-sales-sales-report__numeric">{formatCurrency(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </ReportBox>
+  );
+}
+
+function TripleCountCard({
+  id,
+  title,
+  values,
+}: {
+  id: string;
+  title: string;
+  values: { silver: number; gold: number; platinum: number };
+}) {
+  return (
+    <section id={id} className="daily-sales-sales-report__mini-card">
+      <div className="daily-sales-sales-report__mini-card-title">{title}</div>
+      <div className="daily-sales-sales-report__mini-card-body">
+        <table className="daily-sales-sales-report__three-col">
+          <thead>
+            <tr>
+              <th>Silver</th>
+              <th>Gold</th>
+              <th>Platinum</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{values.silver}</td>
+              <td>{values.gold}</td>
+              <td>{values.platinum}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function PaymentChannelCard({
+  id,
+  title,
+  amount,
+}: {
+  id: string;
+  title: string;
+  amount: number;
+}) {
+  return (
+    <section id={id} className="daily-sales-sales-report__mini-card">
+      <div className="daily-sales-sales-report__mini-card-title">{title}</div>
+      <div className="daily-sales-sales-report__mini-card-body">
+        <div className="daily-sales-sales-report__mini-value">
+          <span>Amount</span>
+          <strong>{formatCurrency(amount)}</strong>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -237,6 +345,7 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
         if (isMounted) setAllRows([]);
       }
     };
+
     void loadRows();
     return () => {
       isMounted = false;
@@ -244,19 +353,52 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
   }, [refreshTick]);
 
   const packageRows = useMemo(() => buildPackageBreakdown(selectedRows, "ALL"), [selectedRows]);
-  const msPackageRows = useMemo(() => buildPackageBreakdown(selectedRows, "STOCKIST"), [selectedRows]);
-  const cdPackageRows = useMemo(() => buildPackageBreakdown(selectedRows, "CENTER"), [selectedRows]);
+  const msPackageRows = useMemo(
+    () => buildPackageBreakdown(selectedRows, "STOCKIST"),
+    [selectedRows],
+  );
+  const cdPackageRows = useMemo(
+    () => buildPackageBreakdown(selectedRows, "CENTER"),
+    [selectedRows],
+  );
   const retailRows = useMemo(() => buildRetailBreakdown(selectedRows), [selectedRows]);
   const totalCashOnHand = useMemo(() => getCashOnHandTotal(cashPieces), [cashPieces]);
-  const paymentBreakdownRows = useMemo(() => buildPaymentBreakdown(selectedRows, totalCashOnHand), [selectedRows, totalCashOnHand]);
+  const paymentBreakdownRows = useMemo(
+    () => buildPaymentBreakdown(selectedRows, totalCashOnHand),
+    [selectedRows, totalCashOnHand],
+  );
   const paymentTypeRows = useMemo(() => buildPaymentTypeRows(selectedRows), [selectedRows]);
   const newAccounts = useMemo(
     () => ({
-      silver: selectedRows.filter((row) => row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "SILVER").length,
-      gold: selectedRows.filter((row) => row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "GOLD").length,
-      platinum: selectedRows.filter((row) => row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "PLATINUM").length,
+      silver: selectedRows.filter(
+        (row) =>
+          row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "SILVER",
+      ).length,
+      gold: selectedRows.filter(
+        (row) => row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "GOLD",
+      ).length,
+      platinum: selectedRows.filter(
+        (row) =>
+          row.newMember && (normalizeDailySalesPackageType(row.packageType) ?? "") === "PLATINUM",
+      ).length,
     }),
     [selectedRows],
+  );
+  const grossSales = useMemo(
+    () => selectedRows.reduce((sum, row) => sum + row.sales, 0),
+    [selectedRows],
+  );
+  const totalBottles = useMemo(
+    () => selectedRows.reduce((sum, row) => sum + row.bottles, 0),
+    [selectedRows],
+  );
+  const totalBlisters = useMemo(
+    () => selectedRows.reduce((sum, row) => sum + row.blisters, 0),
+    [selectedRows],
+  );
+  const totalNewAccounts = useMemo(
+    () => newAccounts.silver + newAccounts.gold + newAccounts.platinum,
+    [newAccounts],
   );
 
   const onGenerateDailySales = async () => {
@@ -303,106 +445,212 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
 
   return (
     <>
-      <section className="mt-4 space-y-4">
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardContent className="p-4">
-            <div className="grid gap-3 md:grid-cols-4">
-              <label className="text-xs font-medium text-slate-700">DATE<input type="date" value={transDateDailySales} onChange={(event) => setTransDateDailySales(event.target.value)} className={fieldClassName} /></label>
-              <div className="flex items-end"><Button variant="secondary" className="w-full" onClick={() => void onGenerateDailySales()} disabled={isLoading}>{isLoading ? "Generating..." : "Generate Report"}</Button></div>
-              <div className="flex items-end"><Button className="w-full" onClick={onPrint}>Print</Button></div>
-              <div className="flex items-end text-sm text-slate-700"><span>{formatDateDMYY(selectedDate)}</span></div>
+      <section className="daily-sales-sales-report">
+        <div className="daily-sales-sales-report__controls">
+          <div className="daily-sales-sales-report__toolbar">
+            <div className="daily-sales-sales-report__field">
+              <label className="daily-sales-sales-report__label">Date</label>
+              <input
+                type="date"
+                value={transDateDailySales}
+                onChange={(event) => setTransDateDailySales(event.target.value)}
+                className="daily-sales-sales-report__input"
+              />
             </div>
-          </CardContent>
-        </Card>
+            <div className="daily-sales-sales-report__toolbar-action daily-sales-sales-report__toolbar-action--center">
+              <button
+                type="button"
+                className="daily-sales-sales-report__button"
+                onClick={() => void onGenerateDailySales()}
+                disabled={isLoading}
+              >
+                {isLoading ? "Generating..." : "Generate Report"}
+              </button>
+            </div>
+            <div className="daily-sales-sales-report__toolbar-action daily-sales-sales-report__toolbar-action--right">
+              <button
+                type="button"
+                className="daily-sales-sales-report__button daily-sales-sales-report__button--primary"
+                onClick={onPrint}
+              >
+                Print
+              </button>
+            </div>
+            <div className="daily-sales-sales-report__date-display">{formatDateDMYY(selectedDate)}</div>
+          </div>
+        </div>
 
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardContent className="p-4">
-            <div id="cntnrDailySales" className="space-y-4">
-              <div className="text-center text-sm font-semibold text-slate-900">
-                <p>Billing System</p>
-                <p>Daily Sales Report</p>
-                <p className="font-normal">{formatDateDMYY(selectedDate)}</p>
-              </div>
-              {errorMessage ? <p className="text-xs text-amber-700">{errorMessage}</p> : null}
-              {!isLoading && hasGenerated && selectedRows.length === 0 ? <p className="text-xs text-slate-500">No sales entries for selected date.</p> : null}
+        <div className="daily-sales-sales-report__sheet">
+          <div id="cntnrDailySales" className="daily-sales-sales-report__print-shell">
+            <div className="daily-sales-sales-report__report-header">
+              <h2>Innovation Grand International</h2>
+              <p>Daily Sales Report</p>
+              <p>{formatDateDMYY(selectedDate)}</p>
+            </div>
 
-              <div className="grid gap-3 xl:grid-cols-[1fr_1fr]">
-                <div className="space-y-3">
-                  <PackageTable id="tblPackage" title="PACKAGE" rows={packageRows} totalLabel="Total Package Sales" />
-                  <PackageTable id="tblMsPackage" title="MOBILE STOCKIST PACKAGE" rows={msPackageRows} totalLabel="Total Mobile Stockist Package Sales" />
-                  <PackageTable id="tblCdPackage" title="DEPOT PACKAGE" rows={cdPackageRows} totalLabel="Total Depot Package Sales" />
-                  <PackageTable id="tblRetail" title="RETAIL" rows={retailRows} totalLabel="Total Retail Sales" includeGrandTotal />
-                </div>
-                <div className="space-y-3">
-                  <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-                    <Table id="tblCashOnHand" className="text-xs">
-                      <TableHeader className="bg-slate-50">
-                        <TableRow>
-                          <TableHead>Cash on Hand</TableHead>
-                          <TableHead>Pieces</TableHead>
-                          <TableHead>Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {cashDenominations.map((entry) => (
-                          <TableRow key={entry.id}>
-                            <TableCell>{entry.label}</TableCell>
-                            <TableCell><input type="number" min="0" value={cashPieces[entry.id]} onChange={(event) => onCashPieceChange(entry.id, event.target.value)} className="h-8 w-24 rounded border border-slate-300 px-2 text-sm" /></TableCell>
-                            <TableCell>{formatCurrency(cashPieces[entry.id] * entry.multiplier)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                      <TableFooter>
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center">TOTAL CASH ON HAND</TableCell>
-                          <TableCell>{formatCurrency(totalCashOnHand)}</TableCell>
-                        </TableRow>
-                      </TableFooter>
-                    </Table>
-                  </Card>
-                  <PaymentTable id="tblPaymentBreakdown" title="PAYMENT BREAKDOWN" rows={paymentBreakdownRows} />
-                </div>
-              </div>
+            {errorMessage ? (
+              <p className="daily-sales-sales-report__message">{errorMessage}</p>
+            ) : null}
+            {!isLoading && hasGenerated && selectedRows.length === 0 ? (
+              <p className="daily-sales-sales-report__message daily-sales-sales-report__message--muted">
+                No sales entries for selected date.
+              </p>
+            ) : null}
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-                  <Table id="tblNewAccounts" className="text-xs">
-                    <TableHeader className="bg-slate-50">
-                      <TableRow><TableHead colSpan={3}>New Accounts</TableHead></TableRow>
-                      <TableRow><TableHead>Silver</TableHead><TableHead>Gold</TableHead><TableHead>Platinum</TableHead></TableRow>
-                    </TableHeader>
-                    <TableBody><TableRow><TableCell>{newAccounts.silver}</TableCell><TableCell>{newAccounts.gold}</TableCell><TableCell>{newAccounts.platinum}</TableCell></TableRow></TableBody>
-                  </Table>
-                </Card>
-                <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-                  <Table id="tblUpgrades" className="text-xs">
-                    <TableHeader className="bg-slate-50">
-                      <TableRow><TableHead colSpan={3}>Upgrades</TableHead></TableRow>
-                      <TableRow><TableHead>Silver</TableHead><TableHead>Gold</TableHead><TableHead>Platinum</TableHead></TableRow>
-                    </TableHeader>
-                    <TableBody><TableRow><TableCell>0</TableCell><TableCell>0</TableCell><TableCell>0</TableCell></TableRow></TableBody>
-                  </Table>
-                </Card>
+            <div className="daily-sales-sales-report__main-grid">
+              <div className="daily-sales-sales-report__column">
+                <PackageTable
+                  id="tblPackage"
+                  title="Package Sales"
+                  rows={packageRows}
+                  totalLabel="Total Package Sales"
+                />
+                <PackageTable
+                  id="tblMsPackage"
+                  title="Mobile Stockist Package Sales"
+                  rows={msPackageRows}
+                  totalLabel="Total Mobile Stockist Sales"
+                />
+                <PackageTable
+                  id="tblCdPackage"
+                  title="Depot Package Sales"
+                  rows={cdPackageRows}
+                  totalLabel="Total Depot Package Sales"
+                />
+                <PackageTable
+                  id="tblRetail"
+                  title="Retail Sales"
+                  rows={retailRows}
+                  totalLabel="Total Retail Sales"
+                  includeGrandTotal
+                />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {paymentTypeRows.map((table) => <PaymentTable key={table.id} id={table.id} title={table.title} rows={table.rows} />)}
-              </div>
+              <div className="daily-sales-sales-report__column">
+                <ReportBox title="Cash Breakdown">
+                  <table id="tblCashOnHand" className="daily-sales-sales-report__table">
+                    <thead>
+                      <tr>
+                        <th>Denomination</th>
+                        <th className="daily-sales-sales-report__center">Pieces</th>
+                        <th className="daily-sales-sales-report__numeric">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cashDenominations.map((entry) => (
+                        <tr key={entry.id}>
+                          <td>{entry.label}</td>
+                          <td className="daily-sales-sales-report__center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={cashPieces[entry.id]}
+                              onChange={(event) => onCashPieceChange(entry.id, event.target.value)}
+                              className="daily-sales-sales-report__cash-input"
+                            />
+                          </td>
+                          <td className="daily-sales-sales-report__numeric">
+                            {formatCurrency(cashPieces[entry.id] * entry.multiplier)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={2}>Total Cash on Hand</td>
+                        <td className="daily-sales-sales-report__numeric">
+                          {formatCurrency(totalCashOnHand)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </ReportBox>
 
-              <div className="grid grid-cols-1 gap-3 pt-2 text-center text-xs text-slate-700 md:grid-cols-2">
-                <div><p>PREPARED BY:</p><p className="font-semibold">Alaiza Jane Emoylan</p></div>
-                <div><p>CHECKED BY:</p><p className="font-semibold">Erica Villaester</p></div>
+                <AmountTable
+                  id="tblPaymentBreakdown"
+                  title="Payment Breakdown"
+                  rows={paymentBreakdownRows}
+                />
+
+                <ReportBox title="Summary">
+                  <div className="daily-sales-sales-report__summary">
+                    <div className="daily-sales-sales-report__summary-row">
+                      <span>Total Transactions</span>
+                      <strong>{selectedRows.length}</strong>
+                    </div>
+                    <div className="daily-sales-sales-report__summary-row">
+                      <span>Total Bottles Sold</span>
+                      <strong>{totalBottles}</strong>
+                    </div>
+                    <div className="daily-sales-sales-report__summary-row">
+                      <span>Total Blisters Sold</span>
+                      <strong>{totalBlisters}</strong>
+                    </div>
+                    <div className="daily-sales-sales-report__summary-row">
+                      <span>New Accounts</span>
+                      <strong>{totalNewAccounts}</strong>
+                    </div>
+                    <div className="daily-sales-sales-report__summary-row">
+                      <span>Cash on Hand</span>
+                      <strong>{formatCurrency(totalCashOnHand)}</strong>
+                    </div>
+                    <div className="daily-sales-sales-report__summary-row daily-sales-sales-report__summary-row--grand">
+                      <span>Grand Total</span>
+                      <strong>{formatCurrency(grossSales)}</strong>
+                    </div>
+                  </div>
+                </ReportBox>
               </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="daily-sales-sales-report__mini-grid">
+              <TripleCountCard
+                id="tblNewAccounts"
+                title="New Accounts"
+                values={newAccounts}
+              />
+              <TripleCountCard
+                id="tblUpgrades"
+                title="Upgrades"
+                values={{ silver: 0, gold: 0, platinum: 0 }}
+              />
+              {paymentTypeRows.map((table) => (
+                <PaymentChannelCard
+                  key={table.id}
+                  id={table.id}
+                  title={table.title}
+                  amount={table.rows[0]?.amount ?? 0}
+                />
+              ))}
+            </div>
+
+            <div className="daily-sales-sales-report__footer">
+              <div className="daily-sales-sales-report__footer-block">
+                <span>Prepared by</span>
+                <strong>Alaiza Jane Emoylan</strong>
+              </div>
+              <div className="daily-sales-sales-report__footer-block">
+                <span>Checked by</span>
+                <strong>Erica Villaester</strong>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <DailySalesDialog isOpen={isWarningOpen} title="Warning!" onClose={() => setIsWarningOpen(false)}>
+      <DailySalesDialog
+        isOpen={isWarningOpen}
+        title="Warning!"
+        onClose={() => setIsWarningOpen(false)}
+      >
         Please input valid date.
       </DailySalesDialog>
-      <SectionPrintPreviewDialog isOpen={isPrintPreviewOpen} title="Print Preview" html={printPreviewHtml} onClose={() => setIsPrintPreviewOpen(false)} />
+      <SectionPrintPreviewDialog
+        isOpen={isPrintPreviewOpen}
+        title="Print Preview"
+        html={printPreviewHtml}
+        onClose={() => setIsPrintPreviewOpen(false)}
+      />
     </>
   );
 }
-

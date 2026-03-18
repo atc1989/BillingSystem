@@ -301,6 +301,42 @@ export function openPrintWindow(title: string, bodyHtml: string) {
           th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
           th { background: #f8fafc; }
           .print-shell { width: 100%; }
+          .daily-sales-sales-report__print-shell { width: 100%; max-width: 1024px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+          .daily-sales-sales-report__report-header { text-align: center; }
+          .daily-sales-sales-report__report-header h2 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 700; }
+          .daily-sales-sales-report__report-header p { margin: 2px 0 0; font-size: 12px; line-height: 18px; color: #475569; }
+          .daily-sales-sales-report__message { margin: 0; font-size: 12px; line-height: 18px; color: #b45309; }
+          .daily-sales-sales-report__message--muted { color: #64748b; }
+          .daily-sales-sales-report__main-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+          .daily-sales-sales-report__column { display: grid; gap: 12px; align-content: start; }
+          .daily-sales-sales-report__box,
+          .daily-sales-sales-report__mini-card { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; page-break-inside: avoid; break-inside: avoid; }
+          .daily-sales-sales-report__box-title,
+          .daily-sales-sales-report__mini-card-title { padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid #cbd5e1; font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #334155; }
+          .daily-sales-sales-report__table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          .daily-sales-sales-report__table th,
+          .daily-sales-sales-report__table td,
+          .daily-sales-sales-report__three-col th,
+          .daily-sales-sales-report__three-col td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; }
+          .daily-sales-sales-report__table thead th,
+          .daily-sales-sales-report__three-col thead th { background: #f8fafc; font-size: 10px; line-height: 14px; font-weight: 700; text-transform: uppercase; color: #475569; }
+          .daily-sales-sales-report__table tfoot td { background: #fbfcfe; font-weight: 700; }
+          .daily-sales-sales-report__numeric { text-align: right; }
+          .daily-sales-sales-report__center { text-align: center; }
+          .daily-sales-sales-report__cash-input { width: 64px; height: 28px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0 6px; text-align: center; font-size: 11px; }
+          .daily-sales-sales-report__summary { display: grid; gap: 8px; padding: 10px; }
+          .daily-sales-sales-report__summary-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; line-height: 16px; color: #334155; }
+          .daily-sales-sales-report__summary-row strong { color: #0f172a; font-weight: 700; }
+          .daily-sales-sales-report__summary-row--grand { padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 12px; line-height: 18px; font-weight: 700; }
+          .daily-sales-sales-report__mini-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+          .daily-sales-sales-report__mini-card-body { padding: 10px; }
+          .daily-sales-sales-report__mini-value { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 11px; line-height: 16px; color: #334155; }
+          .daily-sales-sales-report__mini-value strong { color: #0f172a; font-size: 12px; line-height: 18px; }
+          .daily-sales-sales-report__three-col { width: 100%; border-collapse: collapse; font-size: 11px; }
+          .daily-sales-sales-report__footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 4px; }
+          .daily-sales-sales-report__footer-block { text-align: center; font-size: 11px; line-height: 16px; color: #475569; }
+          .daily-sales-sales-report__footer-block strong { display: block; margin-top: 6px; color: #0f172a; font-size: 12px; line-height: 18px; }
+          @page { size: A4 portrait; margin: 12mm; }
         </style>
       </head>
       <body>
