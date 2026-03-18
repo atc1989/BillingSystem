@@ -513,7 +513,6 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
                   className={encoderInputClassName}
                 />
               </div>
-              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
             </div>
 
             <div className="daily-sales-encoder__grid">
@@ -618,8 +617,6 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
                 />
               </div>
 
-              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
-              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
               <div className="daily-sales-encoder__field">
                 <label className="daily-sales-encoder__label">Amount (2)</label>
                 <input
@@ -668,7 +665,6 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
                 />
               </div>
 
-              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
               <div className="daily-sales-encoder__field">
                 <label className="daily-sales-encoder__label">To Follow (Blister)</label>
                 <input
@@ -681,7 +677,6 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
                   className={encoderInputClassName}
                 />
               </div>
-              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
             </div>
 
             <div className="daily-sales-encoder__grid">
