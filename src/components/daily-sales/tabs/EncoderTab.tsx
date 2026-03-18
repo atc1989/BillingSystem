@@ -1,14 +1,11 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DailySalesDialog } from "@/components/daily-sales/DailySalesDialog";
+import "@/components/daily-sales/DailySalesEncoder.css";
 import {
   encoderDiscountOptions,
-  fieldClassName,
   getPaymentTypeOptions,
   primaryPaymentModes,
   secondaryPaymentModes,
-  textareaClassName,
 } from "@/components/daily-sales/shared";
 import {
   dailySalesDiscountMatrix,
@@ -64,6 +61,10 @@ const initialManualOverrides: ManualOverrides = {
   toFollowBlpk: false,
   salesTwo: false,
 };
+
+const encoderInputClassName = "daily-sales-encoder__input";
+const encoderReadonlyInputClassName =
+  "daily-sales-encoder__input daily-sales-encoder__input--readonly";
 
 function applyMemberPackageRules(
   current: EncoderFormModel,
@@ -293,114 +294,445 @@ export function EncoderTab({ onSaved }: { onSaved: () => void }) {
 
   return (
     <>
-      <section className="mt-4">
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-lg font-semibold text-slate-900">Encoder</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            {submitError ? <p className="mb-3 text-sm text-red-600">{submitError}</p> : null}
-            <form className="space-y-6" onSubmit={onSubmit} onReset={(event) => {
+      <section className="daily-sales-encoder">
+        <div className="daily-sales-encoder__card">
+          <h2 className="daily-sales-encoder__title">Encoder</h2>
+          {submitError ? <p className="daily-sales-encoder__error">{submitError}</p> : null}
+          <form
+            className="daily-sales-encoder__form"
+            onSubmit={onSubmit}
+            onReset={(event) => {
               event.preventDefault();
               resetForm();
-            }}>
-              <div className="grid gap-3 md:grid-cols-3">
-                <label className="text-sm font-medium text-slate-700">Event<input value={form.event} onChange={(event) => updateField("event", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Date<input type="date" value={form.date} onChange={(event) => updateField("date", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">POF Number<input value={form.pofNumber} onChange={(event) => updateField("pofNumber", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Member Name<input value={form.name} onChange={(event) => updateField("name", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Username<input value={form.username} onChange={(event) => updateField("username", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">New Member?
-                  <select value={form.newMember} onChange={(event) => updateField("newMember", event.target.value as "1" | "0")} className={fieldClassName}>
-                    <option value="1">Yes</option>
-                    <option value="0">No</option>
-                  </select>
-                </label>
+            }}
+          >
+            <div className="daily-sales-encoder__grid">
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Event</label>
+                <input
+                  value={form.event}
+                  onChange={(event) => updateField("event", event.target.value)}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Date</label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(event) => updateField("date", event.target.value)}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">POF Number</label>
+                <input
+                  value={form.pofNumber}
+                  onChange={(event) => updateField("pofNumber", event.target.value)}
+                  className={encoderInputClassName}
+                />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-3">
-                <label className="text-sm font-medium text-slate-700">Member Type
-                  <select value={form.memberType} onChange={(event) => setForm((prev) => applyComputedFields(applyMemberPackageRules(prev, event.target.value as EncoderMemberTypeOption, prev.packageType), manualOverrides))} className={fieldClassName}>
-                    <option value="DISTRIBUTOR">Distributor</option>
-                    <option value="STOCKIST">Mobile Stockist</option>
-                    <option value="CENTER">Center</option>
-                    <option value="NON-MEMBER">Non-member</option>
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">Package Type
-                  <select value={form.packageType} onChange={(event) => setForm((prev) => applyComputedFields(applyMemberPackageRules(prev, prev.memberType, event.target.value as EncoderPackageTypeOption), manualOverrides))} className={fieldClassName}>
-                    {encoderPackageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">To Blister?
-                  <select value={form.isToBlister} onChange={(event) => updateField("isToBlister", event.target.value as EncoderBlisterOption)} disabled={isBundledPackage} className={fieldClassName}>
-                    <option value="0">No</option>
-                    <option value="1">Yes</option>
-                  </select>
-                  {isBundledPackage ? <span className="mt-1 block text-xs text-slate-500">Package bundles already include blister counts.</span> : null}
-                </label>
-                <label className="text-sm font-medium text-slate-700">Original Price<input type="number" readOnly value={form.originalPrice} className={`${fieldClassName} bg-slate-50`} /></label>
-                <label className="text-sm font-medium text-slate-700">Quantity<input type="number" min="0" value={form.quantity} onChange={(event) => updateNumericField("quantity", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Blister Count<input type="number" readOnly value={form.blisterCount} className={`${fieldClassName} bg-slate-50`} /></label>
-                <label className="text-sm font-medium text-slate-700">Discount
-                  <select value={form.discount} onChange={(event) => updateNumericField("discount", event.target.value)} className={fieldClassName}>
-                    {encoderDiscountOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">Price<input type="number" value={form.price} onChange={(event) => updateNumericField("price", event.target.value, "price")} className={`${fieldClassName} bg-slate-50`} /></label>
-                <label className="text-sm font-medium text-slate-700">One-time Discount<input type="number" min="0" value={form.oneTimeDiscount} onChange={(event) => updateNumericField("oneTimeDiscount", event.target.value, "oneTimeDiscount")} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Number of Bottles<input type="number" readOnly value={form.noOfBottles} className={`${fieldClassName} bg-slate-50`} /></label>
-                <label className="text-sm font-medium text-slate-700">Total Sales<input type="number" value={form.sales} onChange={(event) => updateNumericField("sales", event.target.value, "sales")} className={`${fieldClassName} bg-slate-50`} /></label>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Member Name</label>
+                <input
+                  value={form.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Username</label>
+                <input
+                  value={form.username}
+                  onChange={(event) => updateField("username", event.target.value)}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">New Member?</label>
+                <select
+                  value={form.newMember}
+                  onChange={(event) => updateField("newMember", event.target.value as "1" | "0")}
+                  className={encoderInputClassName}
+                >
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-4">
-                <label className="text-sm font-medium text-slate-700">Mode of Payment
-                  <select value={form.paymentMode} onChange={(event) => onPaymentModeChange(event.target.value as Exclude<EncoderPaymentModeOption, "N/A">)} className={fieldClassName}>
-                    {primaryPaymentModes.map((mode) => <option key={mode} value={mode}>{mode === "AR(LEADERSUPPORT)" ? "AR (LEADER SUPPORT)" : mode}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">Payment Mode Type
-                  <select value={form.paymentType} onChange={(event) => updateField("paymentType", event.target.value)} disabled={primaryTypeIsReadOnly} className={`${fieldClassName} disabled:bg-slate-50 disabled:text-slate-500`}>
-                    {primaryPaymentTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">Reference Number<input value={form.referenceNo} readOnly={primaryTypeIsReadOnly} onChange={(event) => updateField("referenceNo", event.target.value)} className={`${fieldClassName} ${primaryTypeIsReadOnly ? "bg-slate-50 text-slate-500" : ""}`} /></label>
-                <div />
-                <label className="text-sm font-medium text-slate-700">Mode of Payment (2)
-                  <select value={form.paymentModeTwo} onChange={(event) => onPaymentModeTwoChange(event.target.value as EncoderPaymentModeOption)} className={fieldClassName}>
-                    {secondaryPaymentModes.map((mode) => <option key={mode} value={mode}>{mode === "AR(LEADERSUPPORT)" ? "AR (LEADER SUPPORT)" : mode}</option>)}
-                  </select>
-                  {paymentModeTwoError ? <span className="mt-1 block text-xs text-red-600">{paymentModeTwoError}</span> : null}
-                </label>
-                <label className="text-sm font-medium text-slate-700">Payment Mode Type (2)
-                  <select value={form.paymentTypeTwo} onChange={(event) => updateField("paymentTypeTwo", event.target.value)} disabled={secondaryTypeIsReadOnly} className={`${fieldClassName} disabled:bg-slate-50 disabled:text-slate-500`}>
-                    {secondaryPaymentTypeOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
-                <label className="text-sm font-medium text-slate-700">Reference Number (2)<input value={form.referenceNoTwo} readOnly={secondaryTypeIsReadOnly} onChange={(event) => updateField("referenceNoTwo", event.target.value)} className={`${fieldClassName} ${secondaryTypeIsReadOnly ? "bg-slate-50 text-slate-500" : ""}`} /></label>
-                <label className="text-sm font-medium text-slate-700">Amount (2)<input type="number" min="0" value={form.salesTwo} onChange={(event) => updateNumericField("salesTwo", event.target.value, "salesTwo")} className={fieldClassName} /></label>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Member Type</label>
+                <select
+                  value={form.memberType}
+                  onChange={(event) =>
+                    setForm((prev) =>
+                      applyComputedFields(
+                        applyMemberPackageRules(
+                          prev,
+                          event.target.value as EncoderMemberTypeOption,
+                          prev.packageType,
+                        ),
+                        manualOverrides,
+                      ),
+                    )
+                  }
+                  className={encoderInputClassName}
+                >
+                  <option value="DISTRIBUTOR">Distributor</option>
+                  <option value="STOCKIST">Mobile Stockist</option>
+                  <option value="CENTER">Center</option>
+                  <option value="NON-MEMBER">Non-member</option>
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Package Type</label>
+                <select
+                  value={form.packageType}
+                  onChange={(event) =>
+                    setForm((prev) =>
+                      applyComputedFields(
+                        applyMemberPackageRules(
+                          prev,
+                          prev.memberType,
+                          event.target.value as EncoderPackageTypeOption,
+                        ),
+                        manualOverrides,
+                      ),
+                    )
+                  }
+                  className={encoderInputClassName}
+                >
+                  {encoderPackageOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">To Blister?</label>
+                <select
+                  value={form.isToBlister}
+                  onChange={(event) =>
+                    updateField("isToBlister", event.target.value as EncoderBlisterOption)
+                  }
+                  disabled={isBundledPackage}
+                  className={isBundledPackage ? encoderReadonlyInputClassName : encoderInputClassName}
+                >
+                  <option value="0">No</option>
+                  <option value="1">Yes</option>
+                </select>
+                {isBundledPackage ? (
+                  <span className="daily-sales-encoder__helper">
+                    Package bundles already include blister counts.
+                  </span>
+                ) : null}
               </div>
 
-              <div className="grid gap-3 md:grid-cols-4">
-                <label className="text-sm font-medium text-slate-700">Released (Bottle)<input type="number" min="0" value={form.released} onChange={(event) => updateNumericField("released", event.target.value, "released")} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Released (Blister)<input type="number" min="0" value={form.releasedBlpk} onChange={(event) => updateNumericField("releasedBlpk", event.target.value, "releasedBlpk")} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">To Follow (Bottle)<input type="number" min="0" value={form.toFollow} onChange={(event) => updateNumericField("toFollow", event.target.value, "toFollow")} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">To Follow (Blister)<input type="number" min="0" value={form.toFollowBlpk} onChange={(event) => updateNumericField("toFollowBlpk", event.target.value, "toFollowBlpk")} className={fieldClassName} /></label>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Original Price</label>
+                <input
+                  type="number"
+                  readOnly
+                  value={form.originalPrice}
+                  className={encoderReadonlyInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.quantity}
+                  onChange={(event) => updateNumericField("quantity", event.target.value)}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Blister Count</label>
+                <input
+                  type="number"
+                  readOnly
+                  value={form.blisterCount}
+                  className={encoderReadonlyInputClassName}
+                />
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="text-sm font-medium text-slate-700 md:col-span-2">Remarks<textarea value={form.remarks} onChange={(event) => updateField("remarks", event.target.value)} className={textareaClassName} rows={3} /></label>
-                <label className="text-sm font-medium text-slate-700">Received By<input value={form.receivedBy} onChange={(event) => updateField("receivedBy", event.target.value)} className={fieldClassName} /></label>
-                <label className="text-sm font-medium text-slate-700">Collected By<input value={form.collectedBy} onChange={(event) => updateField("collectedBy", event.target.value)} className={fieldClassName} /></label>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Discount</label>
+                <select
+                  value={form.discount}
+                  onChange={(event) => updateNumericField("discount", event.target.value)}
+                  className={encoderInputClassName}
+                >
+                  {encoderDiscountOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Price</label>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={(event) => updateNumericField("price", event.target.value, "price")}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">One-time Discount</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.oneTimeDiscount}
+                  onChange={(event) =>
+                    updateNumericField("oneTimeDiscount", event.target.value, "oneTimeDiscount")
+                  }
+                  className={encoderInputClassName}
+                />
               </div>
 
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button type="reset" variant="secondary">Clear Form</Button>
-                <Button type="submit">Save Entry</Button>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Number of Bottles</label>
+                <input
+                  type="number"
+                  readOnly
+                  value={form.noOfBottles}
+                  className={encoderReadonlyInputClassName}
+                />
               </div>
-            </form>
-          </CardContent>
-        </Card>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Total Sales</label>
+                <input
+                  type="number"
+                  value={form.sales}
+                  onChange={(event) => updateNumericField("sales", event.target.value, "sales")}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
+            </div>
+
+            <div className="daily-sales-encoder__grid">
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Mode of Payment</label>
+                <select
+                  value={form.paymentMode}
+                  onChange={(event) =>
+                    onPaymentModeChange(
+                      event.target.value as Exclude<EncoderPaymentModeOption, "N/A">,
+                    )
+                  }
+                  className={encoderInputClassName}
+                >
+                  {primaryPaymentModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode === "AR(LEADERSUPPORT)" ? "AR (LEADER SUPPORT)" : mode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Payment Mode Type</label>
+                <select
+                  value={form.paymentType}
+                  onChange={(event) => updateField("paymentType", event.target.value)}
+                  disabled={primaryTypeIsReadOnly}
+                  className={
+                    primaryTypeIsReadOnly ? encoderReadonlyInputClassName : encoderInputClassName
+                  }
+                >
+                  {primaryPaymentTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Reference Number</label>
+                <input
+                  value={form.referenceNo}
+                  readOnly={primaryTypeIsReadOnly}
+                  onChange={(event) => updateField("referenceNo", event.target.value)}
+                  className={
+                    primaryTypeIsReadOnly ? encoderReadonlyInputClassName : encoderInputClassName
+                  }
+                />
+              </div>
+
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Mode of Payment (2)</label>
+                <select
+                  value={form.paymentModeTwo}
+                  onChange={(event) =>
+                    onPaymentModeTwoChange(event.target.value as EncoderPaymentModeOption)
+                  }
+                  className={encoderInputClassName}
+                >
+                  {secondaryPaymentModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode === "AR(LEADERSUPPORT)" ? "AR (LEADER SUPPORT)" : mode}
+                    </option>
+                  ))}
+                </select>
+                {paymentModeTwoError ? (
+                  <span className="daily-sales-encoder__helper daily-sales-encoder__helper--error">
+                    {paymentModeTwoError}
+                  </span>
+                ) : null}
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Payment Mode Type (2)</label>
+                <select
+                  value={form.paymentTypeTwo}
+                  onChange={(event) => updateField("paymentTypeTwo", event.target.value)}
+                  disabled={secondaryTypeIsReadOnly}
+                  className={
+                    secondaryTypeIsReadOnly
+                      ? encoderReadonlyInputClassName
+                      : encoderInputClassName
+                  }
+                >
+                  {secondaryPaymentTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Reference Number (2)</label>
+                <input
+                  value={form.referenceNoTwo}
+                  readOnly={secondaryTypeIsReadOnly}
+                  onChange={(event) => updateField("referenceNoTwo", event.target.value)}
+                  className={
+                    secondaryTypeIsReadOnly
+                      ? encoderReadonlyInputClassName
+                      : encoderInputClassName
+                  }
+                />
+              </div>
+
+              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
+              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Amount (2)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.salesTwo}
+                  onChange={(event) =>
+                    updateNumericField("salesTwo", event.target.value, "salesTwo")
+                  }
+                  className={encoderInputClassName}
+                />
+              </div>
+            </div>
+
+            <div className="daily-sales-encoder__grid">
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Released (Bottle)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.released}
+                  onChange={(event) => updateNumericField("released", event.target.value, "released")}
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">Released (Blister)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.releasedBlpk}
+                  onChange={(event) =>
+                    updateNumericField("releasedBlpk", event.target.value, "releasedBlpk")
+                  }
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">To Follow (Bottle)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.toFollow}
+                  onChange={(event) => updateNumericField("toFollow", event.target.value, "toFollow")}
+                  className={encoderInputClassName}
+                />
+              </div>
+
+              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
+              <div className="daily-sales-encoder__field">
+                <label className="daily-sales-encoder__label">To Follow (Blister)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.toFollowBlpk}
+                  onChange={(event) =>
+                    updateNumericField("toFollowBlpk", event.target.value, "toFollowBlpk")
+                  }
+                  className={encoderInputClassName}
+                />
+              </div>
+              <div className="daily-sales-encoder__placeholder" aria-hidden="true" />
+            </div>
+
+            <div className="daily-sales-encoder__grid">
+              <div className="daily-sales-encoder__field daily-sales-encoder__full">
+                <label className="daily-sales-encoder__label">Remarks</label>
+                <textarea
+                  value={form.remarks}
+                  onChange={(event) => updateField("remarks", event.target.value)}
+                  className="daily-sales-encoder__textarea"
+                  rows={4}
+                />
+              </div>
+
+              <div className="daily-sales-encoder__full">
+                <div className="daily-sales-encoder__pair">
+                  <div className="daily-sales-encoder__field">
+                    <label className="daily-sales-encoder__label">Received By</label>
+                    <input
+                      value={form.receivedBy}
+                      onChange={(event) => updateField("receivedBy", event.target.value)}
+                      className={encoderInputClassName}
+                    />
+                  </div>
+                  <div className="daily-sales-encoder__field">
+                    <label className="daily-sales-encoder__label">Collected By</label>
+                    <input
+                      value={form.collectedBy}
+                      onChange={(event) => updateField("collectedBy", event.target.value)}
+                      className={encoderInputClassName}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="daily-sales-encoder__full daily-sales-encoder__actions">
+                <button
+                  type="reset"
+                  className="daily-sales-encoder__action daily-sales-encoder__action--secondary"
+                >
+                  Clear Form
+                </button>
+                <button
+                  type="submit"
+                  className="daily-sales-encoder__action daily-sales-encoder__action--primary"
+                >
+                  Save Entry
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </section>
 
       <DailySalesDialog isOpen={isSavedOpen} title="Saved" onClose={() => setIsSavedOpen(false)}>
