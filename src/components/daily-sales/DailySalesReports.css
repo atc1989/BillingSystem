@@ -21,9 +21,10 @@
 }
 
 .daily-sales-reports__filters {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
+  align-items: end;
 }
 
 .daily-sales-reports__field {
@@ -67,8 +68,9 @@
 }
 
 .daily-sales-reports__actions {
-  padding-top: 8px;
-  margin: 2px 0;
+  display: flex;
+  align-items: flex-end;
+  margin: 0;
 }
 
 .daily-sales-reports__generate,
@@ -102,7 +104,7 @@
 }
 
 .daily-sales-reports__search {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .daily-sales-reports__table-toolbar {
@@ -221,5 +223,24 @@
 
   .daily-sales-reports__totals-values {
     gap: 12px;
+  }
+}
+
+@media (min-width: 768px) {
+  .daily-sales-reports__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1080px) {
+  .daily-sales-reports__filters {
+    grid-template-columns:
+      minmax(150px, 1fr)
+      minmax(180px, 1fr)
+      minmax(180px, 1fr)
+      auto
+      minmax(185px, 1.1fr);
+    column-gap: 12px;
+    row-gap: 0;
   }
 }
