@@ -2,65 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { DailySalesDialog } from "@/components/daily-sales/DailySalesDialog";
 import { SectionPrintPreviewDialog } from "@/components/daily-sales/SectionPrintPreviewDialog";
 import "@/components/daily-sales/DailySalesInventoryReport.css";
-import { formatCurrency, formatDateSlash, type InventoryAggregateRow } from "@/components/daily-sales/shared";
+import {
+  formatCurrency,
+  formatDateSlash,
+  getLocalDateIso,
+  matchesSearch,
+  type InventoryAggregateRow,
+} from "@/components/daily-sales/shared";
 import { getPrintableHtmlById } from "@/lib/printElement";
-import { normalizeDailySalesPackageType } from "@/lib/dailySalesPackages";
-import { listDailySalesEntries } from "@/services/dailySales.service";
-import type { DailySalesRecord } from "@/types/dailySales";
-
-function buildInventoryRows(rows: DailySalesRecord[]) {
-  const grouped = new Map<string, InventoryAggregateRow>();
-
-  for (const row of rows) {
-    const packageType = normalizeDailySalesPackageType(row.packageType) ?? "SILVER";
-    const current = grouped.get(packageType) ?? {
-      id: packageType,
-      name: packageType,
-      ggTransNo: "-",
-      pofNumber: "-",
-      platinum: 0,
-      gold: 0,
-      silver: 0,
-      synbioticBottle: 0,
-      synbioticBlister: 0,
-      voucher: 0,
-      employeeDiscount: 0,
-      numberOfBottles: 0,
-      numberOfBlisters: 0,
-      releasedBottle: 0,
-      releasedBlister: 0,
-      toFollowBottle: 0,
-      toFollowBlister: 0,
-      amount: 0,
-      modeOfPayment: "N/A",
-    };
-
-    if (packageType === "PLATINUM") current.platinum += row.quantity;
-    if (packageType === "GOLD") current.gold += row.quantity;
-    if (packageType === "SILVER") current.silver += row.quantity;
-    if (packageType === "RETAIL") current.synbioticBottle += row.bottles;
-    if (packageType === "BLISTER") current.synbioticBlister += row.blisters;
-
-    current.numberOfBottles += row.bottles;
-    current.numberOfBlisters += row.blisters;
-    current.releasedBottle += row.releasedBottle;
-    current.releasedBlister += row.releasedBlister;
-    current.toFollowBottle += row.balanceBottle;
-    current.toFollowBlister += row.balanceBlister;
-    current.amount += row.sales;
-    grouped.set(packageType, current);
-  }
-
-  return Array.from(grouped.values()).sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
-}
+import { loadInventoryReportRows } from "@/services/dailySalesReporting.service";
 
 export function InventoryReportTab({ refreshTick }: { refreshTick: number }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const [rows, setRows] = useState<DailySalesRecord[]>([]);
+  const today = getLocalDateIso();
   const [pendingFromDate, setPendingFromDate] = useState(today);
   const [pendingToDate, setPendingToDate] = useState(today);
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,43 +22,55 @@ export function InventoryReportTab({ refreshTick }: { refreshTick: number }) {
   const [errorMessage, setErrorMessage] = useState("");
   const [reportRows, setReportRows] = useState<InventoryAggregateRow[]>([]);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [appliedFromDate, setAppliedFromDate] = useState(today);
+  const [appliedToDate, setAppliedToDate] = useState(today);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [printPreviewHtml, setPrintPreviewHtml] = useState("");
   const [displayDateRange, setDisplayDateRange] = useState(
     `${formatDateSlash(today)} To ${formatDateSlash(today)}`,
   );
 
+  const generateReport = async (fromDate: string, toDate: string) => {
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const nextRows = await loadInventoryReportRows(fromDate, toDate);
+      setReportRows(nextRows);
+      setAppliedFromDate(fromDate);
+      setAppliedToDate(toDate);
+      setDisplayDateRange(`${formatDateSlash(fromDate)} To ${formatDateSlash(toDate)}`);
+      setHasGenerated(true);
+    } catch (error) {
+      setReportRows([]);
+      setErrorMessage(error instanceof Error ? error.message : "Failed to load inventory report.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let isMounted = true;
-    const loadRows = async () => {
-      setIsLoading(true);
-      setErrorMessage("");
+    if (!hasGenerated) {
+      return;
+    }
 
-      try {
-        const nextRows = await listDailySalesEntries();
-        if (isMounted) setRows(nextRows);
-      } catch (error) {
-        if (isMounted) {
-          setRows([]);
-          setErrorMessage(error instanceof Error ? error.message : "Failed to load inventory report.");
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-
-    void loadRows();
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshTick]);
+    void generateReport(appliedFromDate, appliedToDate);
+  }, [appliedFromDate, appliedToDate, hasGenerated, refreshTick]);
 
   const filteredReportRows = useMemo(() => {
-    const search = searchQuery.trim().toLowerCase();
-    if (!search) return reportRows;
-
     return reportRows.filter((row) =>
-      matchesSearch([row.name, row.numberOfBottles, row.numberOfBlisters, row.amount], search),
+      matchesSearch(
+        [
+          row.name,
+          row.ggTransNo,
+          row.pofNumber,
+          row.modeOfPayment,
+          row.numberOfBottles,
+          row.numberOfBlisters,
+          row.amount,
+        ],
+        searchQuery,
+      ),
     );
   }, [reportRows, searchQuery]);
 
@@ -115,9 +80,7 @@ export function InventoryReportTab({ refreshTick }: { refreshTick: number }) {
       return;
     }
 
-    setDisplayDateRange(`${formatDateSlash(pendingFromDate)} To ${formatDateSlash(pendingToDate)}`);
-    setReportRows(buildInventoryRows(rows.filter((row) => row.date >= pendingFromDate && row.date <= pendingToDate)));
-    setHasGenerated(true);
+    void generateReport(pendingFromDate, pendingToDate);
   };
 
   const onPrint = () => {
@@ -227,7 +190,7 @@ export function InventoryReportTab({ refreshTick }: { refreshTick: number }) {
                     <td colSpan={18} className="daily-sales-inventory-report__empty">
                       {hasGenerated
                         ? "No inventory results for selected range"
-                        : "No inventory rows found for the selected filters."}
+                        : "Generate a report to load inventory rows for the selected date range."}
                     </td>
                   </tr>
                 ) : (

@@ -13,6 +13,7 @@ import type { PaymentMethod, PriorityLevel, Vendor } from "../types/billing";
 interface PaymentBreakdown {
   id: string;
   payment_method: PaymentMethod;
+  category: string;
   description: string;
   amount: string;
   bank_name: string;
@@ -41,6 +42,7 @@ export function CreateBillPage() {
     {
       id: "1",
       payment_method: "bank_transfer",
+      category: "",
       description: "",
       amount: "",
       bank_name: "",
@@ -141,6 +143,7 @@ export function CreateBillPage() {
       {
         id: Date.now().toString(),
         payment_method: "bank_transfer",
+        category: "",
         description: "",
         amount: "",
         bank_name: "",
@@ -286,6 +289,7 @@ export function CreateBillPage() {
       },
       breakdowns: breakdowns.map((b) => ({
         payment_method: b.payment_method,
+        category: b.category.trim() || null,
         description: b.description ? b.description : "",
         amount: roundMoney(b.amount),
         bank_name: b.payment_method === "bank_transfer" ? b.bank_name || null : null,
@@ -460,6 +464,9 @@ export function CreateBillPage() {
                           Payment Method
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                           Description
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -486,6 +493,15 @@ export function CreateBillPage() {
                                   </option>
                                 ))}
                               </select>
+                            </td>
+                            <td className="px-4 py-3">
+                              <input
+                                type="text"
+                                value={breakdown.category}
+                                onChange={(e) => updateBreakdown(breakdown.id, "category", e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                placeholder="e.g., Food"
+                              />
                             </td>
                             <td className="px-4 py-3">
                               <input
@@ -519,7 +535,7 @@ export function CreateBillPage() {
                           </tr>
                           {breakdown.payment_method === "bank_transfer" && (
                             <tr>
-                              <td colSpan={4} className="px-4 pb-4">
+                              <td colSpan={5} className="px-4 pb-4">
                                 <div className="mt-4 pt-4 border-t border-gray-200">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>

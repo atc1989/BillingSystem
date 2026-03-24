@@ -4,7 +4,8 @@ import "@/components/daily-sales/DailySalesUsers.css";
 import {
   defaultCodePaymentOptions,
   defaultZeroOneOptions,
-  downloadCsv,
+  downloadExcel,
+  matchesSearch,
 } from "@/components/daily-sales/shared";
 import {
   fetchSalesDashboardUsers,
@@ -28,10 +29,6 @@ type UsersGridRow = {
 
 function normalizeCodePayment(value: string | null): UserAccountCodePayment {
   return value?.toUpperCase() === "PD" ? "PD" : "FS";
-}
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
 }
 
 function buildUsersRows(directoryUsers: SalesDashboardUser[], accountRows: UserAccountRow[]) {
@@ -91,7 +88,7 @@ export function UsersTab() {
     codePayment: "PD" as UserAccountCodePayment,
   });
 
-  const loadData = async () => {
+  const loadData = async ({ showAccountUnavailableNotice = true } = {}) => {
     setIsLoading(true);
     const [directoryResult, accountResult] = await Promise.allSettled([
       fetchSalesDashboardUsers(),
@@ -110,11 +107,22 @@ export function UsersTab() {
       setAccountRows([]);
       setNotice({
         title: "Info",
-        message: "User accounts backend is unavailable. Wire the user_account table to persist changes.",
+        message: "The user_account table is missing or inaccessible. Apply supabase/user_account.sql to create and backfill it.",
       });
+      if (showAccountUnavailableNotice) {
+        setNotice({
+          title: "Info",
+          message:
+            "User accounts backend is unavailable. Wire the user_account table to persist changes.",
+        });
+      }
     }
 
     setIsLoading(false);
+    return {
+      usersLoaded: directoryResult.status === "fulfilled",
+      accountsLoaded: accountResult.status === "fulfilled",
+    };
   };
 
   useEffect(() => {
@@ -123,6 +131,10 @@ export function UsersTab() {
 
   const usersRows = useMemo(() => buildUsersRows(directoryUsers, accountRows), [accountRows, directoryUsers]);
   const zeroOneOptions = useMemo(() => getZeroOneOptions(directoryUsers, accountRows), [accountRows, directoryUsers]);
+  const usersWithNoZeroOneRows = useMemo(
+    () => usersRows.filter((row) => !row.zeroOne.trim()),
+    [usersRows],
+  );
 
   useEffect(() => {
     if (!formState.zeroOne && zeroOneOptions.length > 0) {
@@ -131,14 +143,12 @@ export function UsersTab() {
   }, [formState.zeroOne, zeroOneOptions]);
 
   const filteredUsersRows = useMemo(() => {
-    const search = usersSearchQuery.trim().toLowerCase();
-    if (!search) return usersRows;
-    return usersRows.filter((row) => matchesSearch([row.username, row.fullName, row.zeroOne, row.codePayment], search));
-  }, [usersRows, usersSearchQuery]);
+    return usersWithNoZeroOneRows.filter((row) =>
+      matchesSearch([row.username, row.fullName, row.zeroOne, row.codePayment], usersSearchQuery),
+    );
+  }, [usersSearchQuery, usersWithNoZeroOneRows]);
 
   const filteredAccountRows = useMemo(() => {
-    const search = userAccountSearchQuery.trim().toLowerCase();
-    if (!search) return accountRows;
     return accountRows.filter((row) =>
       matchesSearch(
         [
@@ -157,7 +167,7 @@ export function UsersTab() {
           row.dateCreated,
           row.dateUpdated,
         ],
-        search,
+        userAccountSearchQuery,
       ),
     );
   }, [accountRows, userAccountSearchQuery]);
@@ -216,8 +226,11 @@ export function UsersTab() {
               <label className="daily-sales-users__label">Full Name</label>
               <input
                 value={formState.fullName}
-                readOnly
-                className="daily-sales-users__input daily-sales-users__input--readonly"
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, fullName: event.target.value }))
+                }
+                placeholder="Enter full name"
+                className="daily-sales-users__input"
               />
             </div>
             <div className="daily-sales-users__field">
@@ -268,14 +281,31 @@ export function UsersTab() {
               <button
                 type="button"
                 className="daily-sales-users__button"
-                onClick={() => void loadData()}
+                onClick={async () => {
+                  const result = await loadData({ showAccountUnavailableNotice: false });
+                  setNotice(
+                    result.usersLoaded
+                      ? { title: "Success", message: "Users synced from the current source." }
+                      : { title: "Error", message: "Unable to sync users from the current source." },
+                  );
+                }}
               >
                 Sync Users
               </button>
               <button
                 type="button"
                 className="daily-sales-users__button"
-                onClick={() => void loadData()}
+                onClick={async () => {
+                  const result = await loadData({ showAccountUnavailableNotice: false });
+                  setNotice(
+                    result.accountsLoaded
+                      ? { title: "Success", message: "Code payment data refreshed." }
+                      : {
+                          title: "Error",
+                          message: "Unable to refresh code payment data from user accounts.",
+                        },
+                  );
+                }}
               >
                 Sync Codes
               </button>
@@ -317,7 +347,9 @@ export function UsersTab() {
                 ) : filteredUsersRows.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="daily-sales-users__empty">
-                      No user rows found.
+                      {usersWithNoZeroOneRows.length === 0
+                        ? "All current users already have Zero One assignments."
+                        : "No user rows matched your search."}
                     </td>
                   </tr>
                 ) : (
@@ -366,8 +398,9 @@ export function UsersTab() {
                 type="button"
                 className="daily-sales-users__button daily-sales-users__button--primary"
                 onClick={() =>
-                  downloadCsv(
-                    "daily-sales-user-accounts.csv",
+                  void downloadExcel(
+                    "daily-sales-user-accounts.xlsx",
+                    "User Accounts",
                     [
                       "Full Name",
                       "Username",
@@ -382,6 +415,7 @@ export function UsersTab() {
                       "Region",
                       "Country",
                       "Date Created",
+                      "Date Updated",
                     ],
                     filteredAccountRows.map((row) => [
                       row.fullName,
@@ -397,6 +431,7 @@ export function UsersTab() {
                       row.region,
                       row.country,
                       row.dateCreated,
+                      row.dateUpdated,
                     ]),
                   )
                 }
@@ -474,4 +509,3 @@ export function UsersTab() {
     </>
   );
 }
-

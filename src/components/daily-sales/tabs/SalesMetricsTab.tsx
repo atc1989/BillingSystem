@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgentDetailsDialog } from "@/components/daily-sales/MetricsComponents";
 import "@/components/daily-sales/DailySalesMetrics.css";
+import { getLocalDateIso, normalizeDateRange } from "@/components/daily-sales/shared";
 import { loadSalesMetricsDataset } from "@/services/dailySales.service";
 import type {
   AgentPerformance,
   SalesDataset,
-  SummaryStat,
   TimeRange,
 } from "@/types/dailySales";
 
@@ -14,22 +14,6 @@ const emptyDataset: SalesDataset = {
   summary: [],
   agents: [],
 };
-
-const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
-
-function findSummaryStat(
-  summary: SummaryStat[],
-  ids: string[],
-  labelIncludes: string[] = [],
-) {
-  return summary.find((item) => {
-    const normalizedLabel = item.label.toLowerCase();
-    return (
-      ids.includes(item.id) ||
-      labelIncludes.some((fragment) => normalizedLabel.includes(fragment))
-    );
-  });
-}
 
 function getAgentInitials(name: string) {
   const parts = name
@@ -47,23 +31,31 @@ function getAgentInitials(name: string) {
     .join("");
 }
 
-function resolveDateRange(range: TimeRange, customStartDate: string, customEndDate: string) {
+function resolveDateRange(
+  range: TimeRange,
+  customStartDate: string,
+  customEndDate: string,
+): { dateFrom: string; dateTo: string } {
   const today = new Date();
-  const dateTo = toIsoDate(today);
+  const dateTo = getLocalDateIso(today);
 
   if (range === "custom" && customStartDate && customEndDate) {
-    return { dateFrom: customStartDate, dateTo: customEndDate };
+    const normalized = normalizeDateRange(customStartDate, customEndDate);
+    return {
+      dateFrom: normalized.from,
+      dateTo: normalized.to,
+    };
   }
 
   if (range === "weekly") {
     const start = new Date(today);
     start.setDate(today.getDate() - 6);
-    return { dateFrom: toIsoDate(start), dateTo };
+    return { dateFrom: getLocalDateIso(start), dateTo };
   }
 
   if (range === "monthly") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    return { dateFrom: toIsoDate(start), dateTo };
+    return { dateFrom: getLocalDateIso(start), dateTo };
   }
 
   return { dateFrom: dateTo, dateTo };
@@ -112,7 +104,10 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
   }, [dateFrom, dateTo, refreshTick]);
 
   const rankedAgentStats = useMemo(
-    () => [...dataset.agents].sort((left, right) => right.conversionRate - left.conversionRate || right.sales - left.sales),
+    () =>
+      [...dataset.agents].sort(
+        (left, right) => right.sales - left.sales || right.conversionRate - left.conversionRate,
+      ),
     [dataset.agents],
   );
 
@@ -120,91 +115,16 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
     ? rankedAgentStats.findIndex((agent) => agent.id === selectedAgent.id) + 1
     : null;
 
-  const summaryCards = useMemo(() => {
-    const totalSales =
-      findSummaryStat(dataset.summary, ["total-sales"], ["total sales"]) ?? null;
-    const avgTicket =
-      findSummaryStat(dataset.summary, ["avg-order", "avg-ticket"], ["avg order", "avg ticket"]) ??
-      null;
-    const transactions =
-      findSummaryStat(dataset.summary, ["transactions"], ["transaction", "orders"]) ?? null;
-    const returns =
-      findSummaryStat(dataset.summary, ["returns", "refunds"], ["return", "refund"]) ?? null;
-
-    return [
-      {
-        id: "total-sales",
-        label: "Total Sales",
-        value: totalSales?.value ?? "PHP 0",
-        trend: totalSales?.trend ?? "neutral",
-      },
-      {
-        id: "avg-ticket",
-        label: "Avg Ticket",
-        value: avgTicket?.value ?? "PHP 0",
-        trend: avgTicket?.trend ?? "neutral",
-      },
-      {
-        id: "transactions",
-        label: "Transactions",
-        value: transactions?.value ?? "0",
-        trend: transactions?.trend ?? "neutral",
-      },
-      {
-        id: "returns",
-        label: "Returns",
-        value: returns?.value ?? "0",
-        trend: returns?.trend ?? "neutral",
-      },
-    ];
-  }, [dataset.summary]);
-
-  const displayAgents = useMemo(() => {
-    if (rankedAgentStats.length > 0) {
-      return rankedAgentStats.map((agent, index) => ({
+  const summaryCards = dataset.summary;
+  const displayAgents = useMemo(
+    () =>
+      rankedAgentStats.map((agent, index) => ({
         ...agent,
         rank: index + 1,
         initials: getAgentInitials(agent.name),
-        isPlaceholder: false,
-      }));
-    }
-
-    return [
-      {
-        id: "placeholder-1",
-        name: "No team data",
-        sales: 0,
-        target: 0,
-        conversionRate: 0,
-        status: "idle" as const,
-        rank: 1,
-        initials: "ND",
-        isPlaceholder: true,
-      },
-      {
-        id: "placeholder-2",
-        name: "Awaiting metrics",
-        sales: 0,
-        target: 0,
-        conversionRate: 0,
-        status: "idle" as const,
-        rank: 2,
-        initials: "AM",
-        isPlaceholder: true,
-      },
-      {
-        id: "placeholder-3",
-        name: "No active reps",
-        sales: 0,
-        target: 0,
-        conversionRate: 0,
-        status: "idle" as const,
-        rank: 3,
-        initials: "NR",
-        isPlaceholder: true,
-      },
-    ];
-  }, [rankedAgentStats]);
+      })),
+    [rankedAgentStats],
+  );
 
   return (
     <>
@@ -278,9 +198,11 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
                   <button
                     type="button"
                     className="daily-sales-metrics__apply"
+                    disabled={!customStartDate || !customEndDate}
                     onClick={() => {
-                      setAppliedCustomStartDate(customStartDate);
-                      setAppliedCustomEndDate(customEndDate);
+                      const nextRange = normalizeDateRange(customStartDate, customEndDate);
+                      setAppliedCustomStartDate(nextRange.from);
+                      setAppliedCustomEndDate(nextRange.to);
                     }}
                   >
                     Apply
@@ -324,42 +246,24 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
             </span>
           </div>
           <div className="daily-sales-metrics__team-grid">
-            {displayAgents.map((agent) => {
-              const cardClassName = `daily-sales-metrics__team-card daily-sales-metrics__team-card--${agent.status} ${
-                agent.isPlaceholder ? "" : "daily-sales-metrics__team-trigger"
-              }`;
-
-              if (agent.isPlaceholder) {
-                return (
-                  <div key={agent.id} className={cardClassName}>
-                    <div className="daily-sales-metrics__team-header">
-                      <div className="daily-sales-metrics__team-meta">
-                        <span className="daily-sales-metrics__rank">#{agent.rank}</span>
-                        <div className="daily-sales-metrics__avatar">{agent.initials}</div>
-                        <div className="daily-sales-metrics__identity">
-                          <div className="daily-sales-metrics__name">{agent.name}</div>
-                        </div>
-                      </div>
-                      <span
-                        className={`daily-sales-metrics__status daily-sales-metrics__status--${agent.status}`}
-                      >
-                        {agent.status}
-                      </span>
-                    </div>
-                    <div className="daily-sales-metrics__team-body">
-                      <div className="daily-sales-metrics__performance">0%</div>
-                      <div className="daily-sales-metrics__detail">
-                        <span>Sales</span>
-                        <strong>PHP 0</strong>
-                      </div>
-                      <div className="daily-sales-metrics__detail">
-                        <span>Target</span>
-                        <strong>PHP 0</strong>
-                      </div>
+            {displayAgents.length === 0 ? (
+              <div className="daily-sales-metrics__team-card daily-sales-metrics__team-card--idle">
+                <div className="daily-sales-metrics__team-header">
+                  <div className="daily-sales-metrics__identity">
+                    <div className="daily-sales-metrics__name">
+                      No team data for the selected period
                     </div>
                   </div>
-                );
-              }
+                </div>
+                <div className="daily-sales-metrics__team-body">
+                  <div className="daily-sales-metrics__detail">
+                    <span>Try a different date range or load sales activity first.</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {displayAgents.map((agent) => {
+              const cardClassName = `daily-sales-metrics__team-card daily-sales-metrics__team-card--${agent.status} daily-sales-metrics__team-trigger`;
 
               return (
                 <button

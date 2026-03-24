@@ -7,16 +7,15 @@ import "@/components/daily-sales/DailySalesReports.css";
 import {
   calculateRange,
   downloadCsv,
+  formatPaymentModes,
   formatPesoShort,
+  getLocalDateIso,
+  matchesSearch,
   type ReportRangeType,
 } from "@/components/daily-sales/shared";
 import { listDailySalesEntries, removeDailySalesRecord, updateDailySalesGgTransNo } from "@/services/dailySales.service";
 import type { DailySalesRecord, PrintLineItem, PrintTransaction } from "@/types/dailySales";
 import { Table } from "@/components/ui/table";
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
-}
 
 export function ReportsTab({
   refreshTick,
@@ -25,7 +24,7 @@ export function ReportsTab({
   refreshTick: number;
   onChanged: () => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateIso();
   const [rows, setRows] = useState<DailySalesRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,10 +76,8 @@ export function ReportsTab({
   const filteredRows = useMemo(() => {
     if (!hasGenerated) return [];
 
-    const search = searchQuery.trim().toLowerCase();
     return rows.filter((row) => {
       if (row.date < activeRange.from || row.date > activeRange.to) return false;
-      if (!search) return true;
 
       return matchesSearch(
         [
@@ -88,12 +85,12 @@ export function ReportsTab({
           row.pofNumber,
           row.ggTransNo,
           row.memberName,
-          row.paymentMode,
+          formatPaymentModes(row.paymentMode, row.paymentModeTwo),
           row.sales,
           row.bottles,
           row.blisters,
         ],
-        search,
+        searchQuery,
       );
     });
   }, [activeRange.from, activeRange.to, hasGenerated, rows, searchQuery]);
@@ -113,22 +110,18 @@ export function ReportsTab({
 
   const onReportTypeChange = (nextType: ReportRangeType) => {
     setPendingType(nextType);
-    if (nextType === "custom") return;
-
-    const nextRange = calculateRange(nextType, today, today, today);
-    setPendingStartDate(nextRange.from);
-    setPendingEndDate(nextRange.to);
   };
 
   const onGenerateReport = () => {
-    if (!pendingStartDate || !pendingEndDate) {
+    if (!pendingStartDate || (pendingType === "custom" && !pendingEndDate)) {
       setWarningOpen(true);
       return;
     }
 
+    const nextRange = calculateRange(pendingType, pendingStartDate, pendingEndDate, today);
     setReportType(pendingType);
-    setStartDate(pendingStartDate);
-    setEndDate(pendingEndDate);
+    setStartDate(nextRange.from);
+    setEndDate(nextRange.to);
     setHasGenerated(true);
   };
 
@@ -164,7 +157,7 @@ export function ReportsTab({
       pofNumber: row.pofNumber,
       customer: row.memberName || "N/A",
       ggTransNo: row.ggTransNo,
-      modeOfPayment: row.paymentMode,
+      modeOfPayment: formatPaymentModes(row.paymentMode, row.paymentModeTwo),
       encoder: row.zeroOne || row.ggTransNo || "N/A",
     });
     setPrintLineItems([
@@ -208,7 +201,6 @@ export function ReportsTab({
                 type="date"
                 value={pendingStartDate}
                 onChange={(event) => setPendingStartDate(event.target.value)}
-                readOnly={pendingType !== "custom"}
                 className="daily-sales-reports__input"
               />
             </div>
@@ -218,7 +210,6 @@ export function ReportsTab({
                 type="date"
                 value={pendingEndDate}
                 onChange={(event) => setPendingEndDate(event.target.value)}
-                readOnly={pendingType !== "custom"}
                 className="daily-sales-reports__input"
               />
             </div>
@@ -265,14 +256,14 @@ export function ReportsTab({
                     row.pofNumber,
                     row.ggTransNo,
                     row.sales,
-                    row.paymentMode,
+                    formatPaymentModes(row.paymentMode, row.paymentModeTwo),
                     row.bottles,
                     row.blisters,
                   ]),
                 )
               }
             >
-              Excel
+              Export CSV
             </button>
           </div>
           {isLoading ? (
@@ -301,7 +292,9 @@ export function ReportsTab({
                 {filteredRows.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="daily-sales-reports__empty">
-                      No report rows found for the selected filters.
+                      {hasGenerated
+                        ? "No report rows found for the selected filters."
+                        : "Generate a report to load rows for the selected date range."}
                     </td>
                   </tr>
                 ) : (
@@ -311,7 +304,7 @@ export function ReportsTab({
                       <td>{row.pofNumber}</td>
                       <td>{row.ggTransNo}</td>
                       <td>{formatPesoShort(row.sales)}</td>
-                      <td>{row.paymentMode}</td>
+                      <td>{formatPaymentModes(row.paymentMode, row.paymentModeTwo)}</td>
                       <td>{row.bottles}</td>
                       <td>{row.blisters}</td>
                       <td>

@@ -9,178 +9,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  downloadCsv,
+  downloadExcel,
+  formatPaymentModes,
   formatCurrency,
+  getLocalDateIso,
+  isDateWithinRange,
+  matchesSearch,
   paymentModes,
 } from "@/components/daily-sales/shared";
 import { listDailySalesEntries } from "@/services/dailySales.service";
 import type { DailySalesRecord, PaymentMode } from "@/types/dailySales";
 
-const fallbackRows: DailySalesRecord[] = [
-  {
-    id: "fallback-1",
-    dailySalesId: "fallback-1",
-    pofNumber: "POF-040325-001",
-    ggTransNo: "HeadEagle01",
-    date: "2025-04-03",
-    memberName: "Airyne Dytes Obalag",
-    zeroOne: "HeadEagle01",
-    memberType: "DISTRIBUTOR",
-    packageType: "SILVER",
-    quantity: 1,
-    bottles: 1,
-    blisters: 0,
-    sales: 3500,
-    paymentMode: "CASH",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 3500,
-    discount: 0,
-    discountedPrice: 3500,
-    releasedBottle: 1,
-    releasedBlister: 0,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-2",
-    dailySalesId: "fallback-2",
-    pofNumber: "POF-040425-002",
-    ggTransNo: "HERA01",
-    date: "2025-04-04",
-    memberName: "Jane Cruz",
-    zeroOne: "HERA01",
-    memberType: "DISTRIBUTOR",
-    packageType: "GOLD",
-    quantity: 1,
-    bottles: 3,
-    blisters: 0,
-    sales: 10500,
-    paymentMode: "BANK",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 10500,
-    discount: 0,
-    discountedPrice: 10500,
-    releasedBottle: 3,
-    releasedBlister: 0,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-3",
-    dailySalesId: "fallback-3",
-    pofNumber: "POF-040525-003",
-    ggTransNo: "Romar01",
-    date: "2025-04-05",
-    memberName: "Mark Villanueva",
-    zeroOne: "Romar01",
-    memberType: "DISTRIBUTOR",
-    packageType: "RETAIL",
-    quantity: 2,
-    bottles: 2,
-    blisters: 0,
-    sales: 7000,
-    paymentMode: "EWALLET",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "To Follow",
-    newMember: false,
-    originalPrice: 7000,
-    discount: 0,
-    discountedPrice: 7000,
-    releasedBottle: 1,
-    releasedBlister: 0,
-    balanceBottle: 1,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-4",
-    dailySalesId: "fallback-4",
-    pofNumber: "POF-040625-004",
-    ggTransNo: "Ironman",
-    date: "2025-04-06",
-    memberName: "Leah Santos",
-    zeroOne: "Ironman",
-    memberType: "DISTRIBUTOR",
-    packageType: "BLISTER",
-    quantity: 8,
-    bottles: 0,
-    blisters: 8,
-    sales: 3200,
-    paymentMode: "MAYA(ATC)",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 3200,
-    discount: 0,
-    discountedPrice: 3200,
-    releasedBottle: 0,
-    releasedBlister: 8,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: true,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-];
-
-const fallbackSummary = {
-  totalSales: 24200,
-  totalOrders: 4,
-  totalNewMembers: 0,
-  totalBottles: 6,
-  totalBlisters: 8,
-};
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
-}
-
 export function DashboardTab({ refreshTick }: { refreshTick: number }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateIso();
   const [rows, setRows] = useState<DailySalesRecord[]>([]);
   const [pendingFromDate, setPendingFromDate] = useState(today);
   const [pendingToDate, setPendingToDate] = useState(today);
@@ -226,19 +67,17 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
   }, [refreshTick]);
 
   const filteredRows = useMemo(() => {
-    const search = searchQuery.trim().toLowerCase();
-
     return rows.filter((row) => {
-      if (row.date < fromDate || row.date > toDate) {
+      if (!isDateWithinRange(row.date, fromDate, toDate)) {
         return false;
       }
 
-      if (paymentMode !== "ALL" && row.paymentMode !== paymentMode) {
+      if (
+        paymentMode !== "ALL" &&
+        row.paymentMode !== paymentMode &&
+        row.paymentModeTwo !== paymentMode
+      ) {
         return false;
-      }
-
-      if (!search) {
-        return true;
       }
 
       return matchesSearch(
@@ -246,20 +85,17 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
           row.pofNumber,
           row.memberName,
           row.ggTransNo,
-          row.paymentMode,
+          formatPaymentModes(row.paymentMode, row.paymentModeTwo),
           row.packageType,
           row.sales,
           row.zeroOne,
         ],
-        search,
+        searchQuery,
       );
     });
   }, [fromDate, paymentMode, rows, searchQuery, toDate]);
 
-  const hasRealRows = rows.length > 0;
-  const displayRows = hasRealRows ? filteredRows : fallbackRows;
-
-  const computedSummary = {
+  const summary = {
     totalSales: filteredRows.reduce((sum, row) => sum + row.sales, 0),
     totalOrders: filteredRows.length,
     totalNewMembers: filteredRows.filter((row) => row.newMember).length,
@@ -267,19 +103,17 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
     totalBlisters: filteredRows.reduce((sum, row) => sum + row.blisters, 0),
   };
 
-  const activeSummary = hasRealRows ? computedSummary : fallbackSummary;
-
   const summaryItems = [
-    { label: "Total Sales", value: formatCurrency(activeSummary.totalSales) },
-    { label: "Total Orders", value: activeSummary.totalOrders.toLocaleString() },
-    { label: "New Members", value: activeSummary.totalNewMembers.toLocaleString() },
+    { label: "Total Sales", value: formatCurrency(summary.totalSales) },
+    { label: "Total Orders", value: summary.totalOrders.toLocaleString() },
+    { label: "New Members", value: summary.totalNewMembers.toLocaleString() },
     {
       label: "Total Bottles Sold",
-      value: activeSummary.totalBottles.toLocaleString(),
+      value: summary.totalBottles.toLocaleString(),
     },
     {
       label: "Total Blister Sold",
-      value: activeSummary.totalBlisters.toLocaleString(),
+      value: summary.totalBlisters.toLocaleString(),
     },
   ];
 
@@ -381,8 +215,9 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             size="sm"
             className="daily-sales-dashboard__export"
             onClick={() =>
-              downloadCsv(
-                "daily-sales-dashboard.csv",
+              void downloadExcel(
+                "daily-sales-dashboard.xlsx",
+                "Dashboard",
                 [
                   "POF Number",
                   "Date",
@@ -395,7 +230,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   "Mode of Payment",
                   "Status",
                 ],
-                displayRows.map((row) => [
+                filteredRows.map((row) => [
                   row.pofNumber,
                   row.date,
                   row.memberName,
@@ -404,7 +239,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   row.bottles,
                   row.blisters,
                   row.sales,
-                  row.paymentMode,
+                  formatPaymentModes(row.paymentMode, row.paymentModeTwo),
                   row.status,
                 ]),
               )
@@ -439,14 +274,16 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hasRealRows && filteredRows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="daily-sales-dashboard__empty">
-                  No recent sales found for the selected filters.
+                  {rows.length === 0 && !isLoading
+                    ? "No recent sales are available yet."
+                    : "No recent sales found for the selected filters."}
                 </TableCell>
               </TableRow>
             ) : (
-              displayRows.map((row) => (
+              filteredRows.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="daily-sales-dashboard__cell-primary">
                     {row.pofNumber}
@@ -460,7 +297,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   <TableCell className="daily-sales-dashboard__cell-sales">
                     {formatCurrency(row.sales)}
                   </TableCell>
-                  <TableCell>{row.paymentMode}</TableCell>
+                  <TableCell>{formatPaymentModes(row.paymentMode, row.paymentModeTwo)}</TableCell>
                   <TableCell>
                     <span className="daily-sales-dashboard__status">{row.status}</span>
                   </TableCell>

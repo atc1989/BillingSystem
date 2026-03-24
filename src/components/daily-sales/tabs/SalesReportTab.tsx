@@ -8,6 +8,7 @@ import {
   defaultCashPieces,
   formatCurrency,
   formatDateDMYY,
+  getLocalDateIso,
   paymentTypeTableIds,
   type PackageRow,
 } from "@/components/daily-sales/shared";
@@ -35,66 +36,91 @@ function buildPackageBreakdown(
     return normalizedMember === memberType;
   });
 
+  const buildPackageRow = (
+    label: string,
+    packageType: "PLATINUM" | "GOLD" | "SILVER",
+    fallbackPrice: number,
+  ): PackageRow => {
+    const matchedRows = scoped.filter(
+      (row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === packageType,
+    );
+    const qty = matchedRows.reduce((sum, row) => sum + row.quantity, 0);
+    const amount = matchedRows.reduce((sum, row) => sum + row.sales, 0);
+
+    return {
+      label,
+      qty,
+      price: qty > 0 ? amount / qty : fallbackPrice,
+      amount,
+    };
+  };
+
   return [
-    {
-      label: "Platinum",
-      qty: scoped
-        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "PLATINUM")
-        .reduce((sum, row) => sum + row.quantity, 0),
-      price:
-        memberType === "STOCKIST"
-          ? getDailySalesNetPrice("STOCKIST", "PLATINUM")
-          : memberType === "CENTER"
-            ? getDailySalesNetPrice("CENTER", "PLATINUM")
-            : getDailySalesPackagePrice("PLATINUM"),
-    },
-    {
-      label: "Gold",
-      qty: scoped
-        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "GOLD")
-        .reduce((sum, row) => sum + row.quantity, 0),
-      price:
-        memberType === "STOCKIST"
-          ? getDailySalesNetPrice("STOCKIST", "GOLD")
-          : memberType === "CENTER"
-            ? getDailySalesNetPrice("CENTER", "GOLD")
-            : getDailySalesPackagePrice("GOLD"),
-    },
-    {
-      label: "Silver",
-      qty: scoped
-        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "SILVER")
-        .reduce((sum, row) => sum + row.quantity, 0),
-      price:
-        memberType === "STOCKIST"
-          ? getDailySalesNetPrice("STOCKIST", "SILVER")
-          : memberType === "CENTER"
-            ? getDailySalesNetPrice("CENTER", "SILVER")
-            : getDailySalesPackagePrice("SILVER"),
-    },
+    buildPackageRow(
+      "Platinum",
+      "PLATINUM",
+      memberType === "STOCKIST"
+        ? getDailySalesNetPrice("STOCKIST", "PLATINUM")
+        : memberType === "CENTER"
+          ? getDailySalesNetPrice("CENTER", "PLATINUM")
+          : getDailySalesPackagePrice("PLATINUM"),
+    ),
+    buildPackageRow(
+      "Gold",
+      "GOLD",
+      memberType === "STOCKIST"
+        ? getDailySalesNetPrice("STOCKIST", "GOLD")
+        : memberType === "CENTER"
+          ? getDailySalesNetPrice("CENTER", "GOLD")
+          : getDailySalesPackagePrice("GOLD"),
+    ),
+    buildPackageRow(
+      "Silver",
+      "SILVER",
+      memberType === "STOCKIST"
+        ? getDailySalesNetPrice("STOCKIST", "SILVER")
+        : memberType === "CENTER"
+          ? getDailySalesNetPrice("CENTER", "SILVER")
+          : getDailySalesPackagePrice("SILVER"),
+    ),
   ];
 }
 
 function buildRetailBreakdown(rows: DailySalesRecord[]): PackageRow[] {
+  const bottleRows = rows.filter(
+    (row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "RETAIL",
+  );
+  const blisterRows = rows.filter(
+    (row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "BLISTER",
+  );
+  const employeeDiscountRows = rows.filter((row) =>
+    row.packageType.trim().toUpperCase().includes("DISCOUNT"),
+  );
+  const bottleQty = bottleRows.reduce((sum, row) => sum + row.bottles, 0);
+  const bottleAmount = bottleRows.reduce((sum, row) => sum + row.sales, 0);
+  const blisterQty = blisterRows.reduce((sum, row) => sum + row.blisters, 0);
+  const blisterAmount = blisterRows.reduce((sum, row) => sum + row.sales, 0);
+  const employeeDiscountQty = employeeDiscountRows.reduce((sum, row) => sum + row.quantity, 0);
+  const employeeDiscountAmount = employeeDiscountRows.reduce((sum, row) => sum + row.sales, 0);
+
   return [
     {
       label: "SynBIOTIC+ (Bottle)",
-      qty: rows
-        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "RETAIL")
-        .reduce((sum, row) => sum + row.bottles, 0),
-      price: 2280,
+      qty: bottleQty,
+      price: bottleQty > 0 ? bottleAmount / bottleQty : 2280,
+      amount: bottleAmount,
     },
     {
       label: "SynBIOTIC+ (Blister)",
-      qty: rows
-        .filter((row) => (normalizeDailySalesPackageType(row.packageType) ?? "") === "BLISTER")
-        .reduce((sum, row) => sum + row.blisters, 0),
-      price: 1299,
+      qty: blisterQty,
+      price: blisterQty > 0 ? blisterAmount / blisterQty : 1299,
+      amount: blisterAmount,
     },
     {
       label: "Employees Discount",
-      qty: 0,
-      price: 1200,
+      qty: employeeDiscountQty,
+      price: employeeDiscountQty > 0 ? employeeDiscountAmount / employeeDiscountQty : 1200,
+      amount: employeeDiscountAmount,
     },
   ];
 }
@@ -151,7 +177,7 @@ function buildPaymentTypeRows(rows: DailySalesRecord[]) {
 }
 
 function getPackageTotal(rows: PackageRow[]) {
-  return rows.reduce((sum, row) => sum + row.qty * row.price, 0);
+  return rows.reduce((sum, row) => sum + row.amount, 0);
 }
 
 function ReportBox({
@@ -174,13 +200,13 @@ function PackageTable({
   title,
   rows,
   totalLabel,
-  includeGrandTotal = false,
+  grandTotalAmount,
 }: {
   id: string;
   title: string;
   rows: PackageRow[];
   totalLabel: string;
-  includeGrandTotal?: boolean;
+  grandTotalAmount?: number;
 }) {
   const total = getPackageTotal(rows);
 
@@ -202,7 +228,7 @@ function PackageTable({
               <td className="daily-sales-sales-report__center">{row.qty}</td>
               <td className="daily-sales-sales-report__numeric">{formatCurrency(row.price)}</td>
               <td className="daily-sales-sales-report__numeric">
-                {formatCurrency(row.qty * row.price)}
+                {formatCurrency(row.amount)}
               </td>
             </tr>
           ))}
@@ -212,10 +238,12 @@ function PackageTable({
             <td colSpan={3}>{totalLabel}</td>
             <td className="daily-sales-sales-report__numeric">{formatCurrency(total)}</td>
           </tr>
-          {includeGrandTotal ? (
+          {grandTotalAmount !== undefined ? (
             <tr>
               <td colSpan={3}>Grand Total</td>
-              <td className="daily-sales-sales-report__numeric">{formatCurrency(total)}</td>
+              <td className="daily-sales-sales-report__numeric">
+                {formatCurrency(grandTotalAmount)}
+              </td>
             </tr>
           ) : null}
         </tfoot>
@@ -322,7 +350,7 @@ function PaymentChannelCard({
 }
 
 export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateIso();
   const [allRows, setAllRows] = useState<DailySalesRecord[]>([]);
   const [selectedRows, setSelectedRows] = useState<DailySalesRecord[]>([]);
   const [transDateDailySales, setTransDateDailySales] = useState(today);
@@ -338,11 +366,19 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
   useEffect(() => {
     let isMounted = true;
     const loadRows = async () => {
+      if (isMounted) {
+        setIsLoading(true);
+      }
+
       try {
         const nextRows = await listDailySalesEntries();
         if (isMounted) setAllRows(nextRows);
       } catch {
         if (isMounted) setAllRows([]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -399,6 +435,26 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
   const totalNewAccounts = useMemo(
     () => newAccounts.silver + newAccounts.gold + newAccounts.platinum,
     [newAccounts],
+  );
+  const upgradeCounts = useMemo(
+    () =>
+      selectedRows.reduce(
+        (totals, row) => {
+          const packageType = normalizeDailySalesPackageType(row.packageType) ?? "";
+
+          if (packageType === "USILVERGOLD") {
+            totals.gold += row.quantity;
+          }
+
+          if (packageType === "UGOLDPLATINUM" || packageType === "USILVERPLATINUM") {
+            totals.platinum += row.quantity;
+          }
+
+          return totals;
+        },
+        { silver: 0, gold: 0, platinum: 0 },
+      ),
+    [selectedRows],
   );
 
   const onGenerateDailySales = async () => {
@@ -522,7 +578,7 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
                   title="Retail Sales"
                   rows={retailRows}
                   totalLabel="Total Retail Sales"
-                  includeGrandTotal
+                  grandTotalAmount={grossSales}
                 />
               </div>
 
@@ -612,7 +668,7 @@ export function SalesReportTab({ refreshTick }: { refreshTick: number }) {
               <TripleCountCard
                 id="tblUpgrades"
                 title="Upgrades"
-                values={{ silver: 0, gold: 0, platinum: 0 }}
+                values={upgradeCounts}
               />
               {paymentTypeRows.map((table) => (
                 <PaymentChannelCard
