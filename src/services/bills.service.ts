@@ -119,7 +119,7 @@ export async function listBills(params: ListBillsParams) {
   const billIds = bills.map((bill) => bill.id);
   const { data: breakdowns, error: breakdownError } = await supabase
     .from("bill_breakdowns")
-    .select("bill_id,payment_method")
+    .select("bill_id,payment_method,category")
     .in("bill_id", billIds);
 
   if (breakdownError) {
@@ -127,19 +127,27 @@ export async function listBills(params: ListBillsParams) {
   }
 
   const paymentMethodsByBill = new Map<string, Set<string>>();
+  const categoriesByBill = new Map<string, Set<string>>();
   (breakdowns ?? []).forEach((breakdown) => {
     if (!paymentMethodsByBill.has(breakdown.bill_id)) {
       paymentMethodsByBill.set(breakdown.bill_id, new Set());
     }
+    if (!categoriesByBill.has(breakdown.bill_id)) {
+      categoriesByBill.set(breakdown.bill_id, new Set());
+    }
     if (breakdown.payment_method) {
       paymentMethodsByBill.get(breakdown.bill_id)?.add(breakdown.payment_method);
+    }
+    if (typeof breakdown.category === "string" && breakdown.category.trim()) {
+      categoriesByBill.get(breakdown.bill_id)?.add(breakdown.category.trim());
     }
   });
 
   return {
     data: bills.map((bill) => ({
       ...bill,
-      payment_methods: Array.from(paymentMethodsByBill.get(bill.id) ?? [])
+      payment_methods: Array.from(paymentMethodsByBill.get(bill.id) ?? []),
+      categories: Array.from(categoriesByBill.get(bill.id) ?? [])
     })) as Array<Bill & { vendor?: { id: string; name: string }; payment_methods: string[] }>,
     count: count ?? 0,
     error: null as string | null
@@ -225,7 +233,7 @@ export async function getBillById(id: string) {
       created_at,
       updated_at,
       vendor:vendors!inner(id,name,address),
-      breakdowns:bill_breakdowns(id,bill_id,payment_method,description,amount,bank_name,bank_account_name,bank_account_no)
+      breakdowns:bill_breakdowns(id,bill_id,payment_method,category,description,amount,bank_name,bank_account_name,bank_account_no)
     `
     )
     .eq("id", id)
@@ -328,6 +336,7 @@ export async function createBill(payload: CreateBillPayload) {
   const breakdowns = payload.breakdowns.map((b) => ({
     bill_id: bill.id,
     payment_method: b.payment_method,
+    category: b.category?.trim() || null,
     description: b.description ?? "",
     amount: roundMoney(b.amount),
     bank_name: b.payment_method === "bank_transfer" ? b.bank_name ?? null : null,
@@ -407,6 +416,7 @@ export async function updateBill(id: string, payload: UpdateBillPayload) {
   const breakdowns = payload.breakdowns.map((b) => ({
     bill_id: id,
     payment_method: b.payment_method,
+    category: b.category?.trim() || null,
     description: b.description ?? "",
     amount: roundMoney(b.amount),
     bank_name: b.payment_method === "bank_transfer" ? b.bank_name ?? null : null,

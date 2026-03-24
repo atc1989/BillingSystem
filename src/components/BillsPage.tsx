@@ -14,6 +14,7 @@ type BillRow = {
   vendor?: { id: string; name: string };
   payment_method?: string;
   payment_methods: string[];
+  categories?: string[];
   priority_level: string;
   total_amount: number;
   status: string;
@@ -162,6 +163,33 @@ export function BillsPage() {
           </span>
         )}
         {labels.length === 0 && <span className="text-sm text-gray-500">—</span>}
+      </div>
+    );
+  };
+
+  const renderCategories = (categories: string[] = []) => {
+    const uniqueCategories = Array.from(
+      new Set(categories.map((value) => value.trim()).filter(Boolean))
+    );
+    const visible = uniqueCategories.slice(0, 2);
+    const extra = uniqueCategories.length - visible.length;
+
+    return (
+      <div className="flex flex-wrap gap-2" title={uniqueCategories.join(", ")}>
+        {visible.map((label) => (
+          <span
+            key={label}
+            className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+          >
+            {label}
+          </span>
+        ))}
+        {extra > 0 && (
+          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+            +{extra}
+          </span>
+        )}
+        {uniqueCategories.length === 0 && <span className="text-sm text-gray-500">—</span>}
       </div>
     );
   };
@@ -371,6 +399,9 @@ export function BillsPage() {
                         Payment Method
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                        Category
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
                         Priority
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
@@ -415,6 +446,9 @@ export function BillsPage() {
                               ? [bill.payment_method]
                               : []
                           )}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-900">
+                          {renderCategories(bill.categories)}
                         </td>
                         <td className="px-4 py-4">
                           <span
