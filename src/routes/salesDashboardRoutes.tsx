@@ -19,5 +19,6 @@ export const salesDashboardRoutes = (
     />
     <Route path="sales-report" element={redirectToDailySalesTab("sales-report")} />
     <Route path="users" element={redirectToDailySalesTab("users")} />
+    <Route path="sales-metrics" element={redirectToDailySalesTab("sales-metrics")} />
   </Route>
 );

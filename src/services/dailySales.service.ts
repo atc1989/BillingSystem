@@ -484,6 +484,61 @@ function normalizeLocalRecord(row: DailySalesRecord): DailySalesRecord {
   };
 }
 
+function shouldFallbackToLocalSave(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return true;
+  }
+
+  const maybeError = error as {
+    code?: string;
+    status?: number;
+    message?: string;
+    details?: string;
+    hint?: string;
+  };
+
+  if (typeof maybeError.code === "string") {
+    const nonRecoverableCodes = new Set([
+      "22P02",
+      "23502",
+      "23503",
+      "23505",
+      "23514",
+      "42501",
+      "PGRST116",
+    ]);
+
+    if (nonRecoverableCodes.has(maybeError.code)) {
+      return false;
+    }
+  }
+
+  if (
+    typeof maybeError.status === "number" &&
+    maybeError.status >= 400 &&
+    maybeError.status < 500 &&
+    maybeError.status !== 408 &&
+    maybeError.status !== 429
+  ) {
+    return false;
+  }
+
+  const joined = [maybeError.message, maybeError.details, maybeError.hint]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /duplicate|unique constraint|required|validation|invalid|permission|forbidden|denied/.test(
+      joined,
+    )
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function listDailySalesEntries(): Promise<DailySalesRecord[]> {
   const localRows = readLocalJson<DailySalesRecord[]>(LOCAL_ENTRIES_KEY, []).map(normalizeLocalRecord);
 
@@ -508,6 +563,10 @@ export async function saveDailySalesEntry(form: EncoderFormModel) {
     await saveSalesEntry(mapEncoderFormToLegacyEntry(form));
     return { source: "remote" as const };
   } catch (error) {
+    if (!shouldFallbackToLocalSave(error)) {
+      throw error;
+    }
+
     const localRows = readLocalJson<DailySalesRecord[]>(LOCAL_ENTRIES_KEY, []);
     writeLocalJson(LOCAL_ENTRIES_KEY, sortRecords([...localRows, localRow]));
     return {
@@ -560,6 +619,48 @@ export async function removeDailySalesRecord(entryId: string) {
   await deleteSalesEntry(entryId);
 }
 
+function formatMetricsCurrency(value: number) {
+  return `PHP ${Math.round(value).toLocaleString()}`;
+}
+
+function filterMetricsRows(rows: DailySalesRecord[], dateFrom: string, dateTo: string) {
+  return rows.filter((row) => row.date >= dateFrom && row.date <= dateTo);
+}
+
+function buildMetricsSummary(rows: DailySalesRecord[]): SummaryStat[] {
+  const totalSales = rows.reduce((sum, row) => sum + row.sales, 0);
+  const totalTransactions = rows.length;
+  const totalNewMembers = rows.filter((row) => row.newMember).length;
+  const avgTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+
+  return [
+    {
+      id: "total-sales",
+      label: "Total Sales",
+      value: formatMetricsCurrency(totalSales),
+      trend: totalSales > 0 ? "up" : "neutral",
+    },
+    {
+      id: "avg-ticket",
+      label: "Avg Ticket",
+      value: formatMetricsCurrency(avgTicket),
+      trend: avgTicket > 0 ? "up" : "neutral",
+    },
+    {
+      id: "transactions",
+      label: "Transactions",
+      value: totalTransactions.toLocaleString(),
+      trend: totalTransactions > 0 ? "up" : "neutral",
+    },
+    {
+      id: "new-members",
+      label: "New Members",
+      value: totalNewMembers.toLocaleString(),
+      trend: totalNewMembers > 0 ? "up" : "neutral",
+    },
+  ];
+}
+
 function normalizeRpcDataset(rows: unknown[]): SalesDataset {
   const agents: AgentPerformance[] = rows.map((row, index) => {
     const safeRow = (row ?? {}) as Record<string, unknown>;
@@ -587,34 +688,31 @@ function normalizeRpcDataset(rows: unknown[]): SalesDataset {
     const safeRow = (row ?? {}) as Record<string, unknown>;
     return sum + toNumber(safeRow.orders ?? safeRow.order_count ?? safeRow.deals_total);
   }, 0);
-  const avgConversion =
-    agents.length > 0
-      ? agents.reduce((sum, agent) => sum + agent.conversionRate, 0) / agents.length
-      : 0;
+  const avgTicket = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
   const summary: SummaryStat[] = [
     {
       id: "total-sales",
-      label: "API Total Sales",
-      value: `PHP ${Math.round(totalSales).toLocaleString()}`,
-      trend: "up",
+      label: "Total Sales",
+      value: formatMetricsCurrency(totalSales),
+      trend: totalSales > 0 ? "up" : "neutral",
     },
     {
       id: "transactions",
-      label: "API Orders",
+      label: "Transactions",
       value: Math.round(totalTransactions).toLocaleString(),
-      trend: "up",
+      trend: totalTransactions > 0 ? "up" : "neutral",
+    },
+    {
+      id: "avg-ticket",
+      label: "Avg Ticket",
+      value: formatMetricsCurrency(avgTicket),
+      trend: avgTicket > 0 ? "up" : "neutral",
     },
     {
       id: "active-agents",
       label: "Active Agents",
       value: agents.filter((agent) => agent.status === "active").length.toLocaleString(),
-      trend: "neutral",
-    },
-    {
-      id: "avg-conversion",
-      label: "Avg Response",
-      value: `${Math.round(avgConversion)}%`,
       trend: "neutral",
     },
   ];
@@ -627,7 +725,7 @@ function normalizeRpcDataset(rows: unknown[]): SalesDataset {
 }
 
 function buildFallbackMetricsDataset(rows: DailySalesRecord[], dateFrom: string, dateTo: string): SalesDataset {
-  const filteredRows = rows.filter((row) => row.date >= dateFrom && row.date <= dateTo);
+  const filteredRows = filterMetricsRows(rows, dateFrom, dateTo);
   const grouped = new Map<string, DailySalesRecord[]>();
 
   for (const row of filteredRows) {
@@ -652,39 +750,9 @@ function buildFallbackMetricsDataset(rows: DailySalesRecord[], dateFrom: string,
     };
   });
 
-  const totalSales = filteredRows.reduce((sum, row) => sum + row.sales, 0);
-  const totalOrders = filteredRows.length;
-  const totalNewMembers = filteredRows.filter((row) => row.newMember).length;
-  const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
-
   return {
     label: "Derived Sales Dataset",
-    summary: [
-      {
-        id: "total-sales",
-        label: "Total Sales",
-        value: `PHP ${Math.round(totalSales).toLocaleString()}`,
-        trend: "up",
-      },
-      {
-        id: "transactions",
-        label: "Transactions",
-        value: totalOrders.toLocaleString(),
-        trend: "neutral",
-      },
-      {
-        id: "new-members",
-        label: "New Members",
-        value: totalNewMembers.toLocaleString(),
-        trend: totalNewMembers > 0 ? "up" : "neutral",
-      },
-      {
-        id: "avg-order",
-        label: "Avg Order Value",
-        value: `PHP ${Math.round(avgOrderValue).toLocaleString()}`,
-        trend: "neutral",
-      },
-    ],
+    summary: buildMetricsSummary(filteredRows),
     agents,
   };
 }
@@ -698,14 +766,24 @@ export async function loadSalesMetricsDataset(dateFrom: string, dateTo: string):
     { from_date: dateFrom, to_date: dateTo },
   ];
 
+  const rowsPromise = listDailySalesEntries().catch(() => []);
+
   for (const params of rpcParamAttempts) {
     const { data, error } = await supabase.rpc("rpc_sales_api_performance", params as never);
     if (!error) {
-      return normalizeRpcDataset(Array.isArray(data) ? data : []);
+      const rpcDataset = normalizeRpcDataset(Array.isArray(data) ? data : []);
+      const rows = await rowsPromise;
+      const filteredRows = filterMetricsRows(rows, dateFrom, dateTo);
+
+      return {
+        label: rpcDataset.label,
+        summary: filteredRows.length > 0 ? buildMetricsSummary(filteredRows) : rpcDataset.summary,
+        agents: rpcDataset.agents,
+      };
     }
   }
 
-  const rows = await listDailySalesEntries();
+  const rows = await rowsPromise;
   return buildFallbackMetricsDataset(rows, dateFrom, dateTo);
 }
 

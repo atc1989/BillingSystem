@@ -8,6 +8,7 @@ import { InventoryReportTab } from "@/components/daily-sales/tabs/InventoryRepor
 import { SalesReportTab } from "@/components/daily-sales/tabs/SalesReportTab";
 import { UsersTab } from "@/components/daily-sales/tabs/UsersTab";
 import { SalesMetricsTab } from "@/components/daily-sales/tabs/SalesMetricsTab";
+import "@/components/daily-sales/DailySalesDashboard.css";
 
 const validTabIds: DailySalesTabId[] = [
   "dashboard",
@@ -49,26 +50,28 @@ export function DailySalesPage() {
   const triggerRefresh = () => setRefreshTick((value) => value + 1);
 
   return (
-    <main className="mx-auto max-w-[1320px] space-y-6">
-      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <DailySalesTabs activeTab={activeTab} onTabChange={onTabChange} />
-      </div>
+    <main className="daily-sales-page">
+      <div className="daily-sales-page__inner">
+        <div className="daily-sales-tabs-shell">
+          <DailySalesTabs activeTab={activeTab} onTabChange={onTabChange} />
+        </div>
 
-      {activeTab === "dashboard" ? <DashboardTab refreshTick={refreshTick} /> : null}
-      {activeTab === "encoder" ? <EncoderTab onSaved={triggerRefresh} /> : null}
-      {activeTab === "reports" ? (
-        <ReportsTab refreshTick={refreshTick} onChanged={triggerRefresh} />
-      ) : null}
-      {activeTab === "inventory-report" ? (
-        <InventoryReportTab refreshTick={refreshTick} />
-      ) : null}
-      {activeTab === "sales-report" ? (
-        <SalesReportTab refreshTick={refreshTick} />
-      ) : null}
-      {activeTab === "users" ? <UsersTab /> : null}
-      {activeTab === "sales-metrics" ? (
-        <SalesMetricsTab refreshTick={refreshTick} />
-      ) : null}
+        {activeTab === "dashboard" ? <DashboardTab refreshTick={refreshTick} /> : null}
+        {activeTab === "encoder" ? <EncoderTab onSaved={triggerRefresh} /> : null}
+        {activeTab === "reports" ? (
+          <ReportsTab refreshTick={refreshTick} onChanged={triggerRefresh} />
+        ) : null}
+        {activeTab === "inventory-report" ? (
+          <InventoryReportTab refreshTick={refreshTick} />
+        ) : null}
+        {activeTab === "sales-report" ? (
+          <SalesReportTab refreshTick={refreshTick} />
+        ) : null}
+        {activeTab === "users" ? <UsersTab /> : null}
+        {activeTab === "sales-metrics" ? (
+          <SalesMetricsTab refreshTick={refreshTick} />
+        ) : null}
+      </div>
     </main>
   );
 }

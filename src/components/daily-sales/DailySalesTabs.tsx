@@ -27,16 +27,14 @@ export function DailySalesTabs({
   onTabChange: (tabId: DailySalesTabId) => void;
 }) {
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="flex min-w-max items-center gap-1.5 whitespace-nowrap">
+    <div>
+      <div className="daily-sales-tabs-row">
         {tabItems.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={`h-7 rounded-md px-3 text-[12px] font-medium transition-colors ${
-              activeTab === item.id
-                ? "bg-slate-950 text-white"
-                : "text-slate-700 hover:bg-slate-100"
+            className={`daily-sales-tab ${
+              activeTab === item.id ? "daily-sales-tab--active" : ""
             }`}
             onClick={() => onTabChange(item.id)}
           >

@@ -1,31 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { DailySalesDialog } from "@/components/daily-sales/DailySalesDialog";
 import { ModifyGgTransNoDialog } from "@/components/daily-sales/ModifyGgTransNoDialog";
 import { PrintPreviewDialog } from "@/components/daily-sales/PrintPreviewDialog";
+import "@/components/daily-sales/DailySalesReports.css";
 import {
   calculateRange,
   downloadCsv,
-  fieldClassName,
+  formatPaymentModes,
   formatPesoShort,
+  getLocalDateIso,
+  matchesSearch,
   type ReportRangeType,
 } from "@/components/daily-sales/shared";
 import { listDailySalesEntries, removeDailySalesRecord, updateDailySalesGgTransNo } from "@/services/dailySales.service";
 import type { DailySalesRecord, PrintLineItem, PrintTransaction } from "@/types/dailySales";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
-}
+import { Table } from "@/components/ui/table";
 
 export function ReportsTab({
   refreshTick,
@@ -34,7 +24,7 @@ export function ReportsTab({
   refreshTick: number;
   onChanged: () => void;
 }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateIso();
   const [rows, setRows] = useState<DailySalesRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -86,10 +76,8 @@ export function ReportsTab({
   const filteredRows = useMemo(() => {
     if (!hasGenerated) return [];
 
-    const search = searchQuery.trim().toLowerCase();
     return rows.filter((row) => {
       if (row.date < activeRange.from || row.date > activeRange.to) return false;
-      if (!search) return true;
 
       return matchesSearch(
         [
@@ -97,12 +85,12 @@ export function ReportsTab({
           row.pofNumber,
           row.ggTransNo,
           row.memberName,
-          row.paymentMode,
+          formatPaymentModes(row.paymentMode, row.paymentModeTwo),
           row.sales,
           row.bottles,
           row.blisters,
         ],
-        search,
+        searchQuery,
       );
     });
   }, [activeRange.from, activeRange.to, hasGenerated, rows, searchQuery]);
@@ -122,22 +110,18 @@ export function ReportsTab({
 
   const onReportTypeChange = (nextType: ReportRangeType) => {
     setPendingType(nextType);
-    if (nextType === "custom") return;
-
-    const nextRange = calculateRange(nextType, today, today, today);
-    setPendingStartDate(nextRange.from);
-    setPendingEndDate(nextRange.to);
   };
 
   const onGenerateReport = () => {
-    if (!pendingStartDate || !pendingEndDate) {
+    if (!pendingStartDate || (pendingType === "custom" && !pendingEndDate)) {
       setWarningOpen(true);
       return;
     }
 
+    const nextRange = calculateRange(pendingType, pendingStartDate, pendingEndDate, today);
     setReportType(pendingType);
-    setStartDate(pendingStartDate);
-    setEndDate(pendingEndDate);
+    setStartDate(nextRange.from);
+    setEndDate(nextRange.to);
     setHasGenerated(true);
   };
 
@@ -173,7 +157,7 @@ export function ReportsTab({
       pofNumber: row.pofNumber,
       customer: row.memberName || "N/A",
       ggTransNo: row.ggTransNo,
-      modeOfPayment: row.paymentMode,
+      modeOfPayment: formatPaymentModes(row.paymentMode, row.paymentModeTwo),
       encoder: row.zeroOne || row.ggTransNo || "N/A",
     });
     setPrintLineItems([
@@ -195,52 +179,84 @@ export function ReportsTab({
 
   return (
     <>
-      <section className="mt-4 space-y-4">
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardContent className="p-4">
-            <div className="grid gap-3 md:grid-cols-5">
-              <label className="text-xs font-medium text-slate-700">
-                Report Type
-                <select value={pendingType} onChange={(event) => onReportTypeChange(event.target.value as ReportRangeType)} className={fieldClassName}>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </label>
-              <label className="text-xs font-medium text-slate-700">
-                Start Date
-                <input type="date" value={pendingStartDate} onChange={(event) => setPendingStartDate(event.target.value)} readOnly={pendingType !== "custom"} className={fieldClassName} />
-              </label>
-              <label className="text-xs font-medium text-slate-700">
-                End Date
-                <input type="date" value={pendingEndDate} onChange={(event) => setPendingEndDate(event.target.value)} readOnly={pendingType !== "custom"} className={fieldClassName} />
-              </label>
-              <div className="flex items-end">
-                <Button variant="secondary" className="w-full" onClick={onGenerateReport}>Generate Report</Button>
-              </div>
-              <label className="text-xs font-medium text-slate-700">
-                Search
-                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search table..." className={fieldClassName} />
-              </label>
+      <section className="daily-sales-reports">
+        <div className="daily-sales-reports__panel">
+          <div className="daily-sales-reports__filters">
+            <div className="daily-sales-reports__field">
+              <label className="daily-sales-reports__label">Report Type</label>
+              <select
+                value={pendingType}
+                onChange={(event) => onReportTypeChange(event.target.value as ReportRangeType)}
+                className="daily-sales-reports__input"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="custom">Custom Range</option>
+              </select>
             </div>
-          </CardContent>
-        </Card>
+            <div className="daily-sales-reports__field">
+              <label className="daily-sales-reports__label">Start Date</label>
+              <input
+                type="date"
+                value={pendingStartDate}
+                onChange={(event) => setPendingStartDate(event.target.value)}
+                className="daily-sales-reports__input"
+              />
+            </div>
+            <div className="daily-sales-reports__field">
+              <label className="daily-sales-reports__label">End Date</label>
+              <input
+                type="date"
+                value={pendingEndDate}
+                onChange={(event) => setPendingEndDate(event.target.value)}
+                className="daily-sales-reports__input"
+              />
+            </div>
+            <div className="daily-sales-reports__actions">
+              <button
+                type="button"
+                className="daily-sales-reports__generate"
+                onClick={onGenerateReport}
+              >
+                Generate Report
+              </button>
+            </div>
+            <div className="daily-sales-reports__field daily-sales-reports__search">
+              <label className="daily-sales-reports__label">Search</label>
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search table..."
+                className="daily-sales-reports__input"
+              />
+            </div>
+          </div>
+        </div>
 
-        <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-          <div className="flex items-center justify-end px-4 py-3">
-            <Button
-              size="sm"
+        <div className="daily-sales-reports__table-panel">
+          <div className="daily-sales-reports__table-toolbar">
+            <button
+              type="button"
+              className="daily-sales-reports__export"
               onClick={() =>
                 downloadCsv(
                   "daily-sales-reports.csv",
-                  ["Date", "POF Number", "GG Trans No.", "Total Sales", "Mode of Payment", "Total Bottles", "Total Blisters"],
+                  [
+                    "Date",
+                    "POF Number",
+                    "GG Trans No.",
+                    "Total Sales",
+                    "Mode of Payment",
+                    "Total Bottles",
+                    "Total Blisters",
+                  ],
                   filteredRows.map((row) => [
                     row.date,
                     row.pofNumber,
                     row.ggTransNo,
                     row.sales,
-                    row.paymentMode,
+                    formatPaymentModes(row.paymentMode, row.paymentModeTwo),
                     row.bottles,
                     row.blisters,
                   ]),
@@ -248,66 +264,89 @@ export function ReportsTab({
               }
             >
               Export CSV
-            </Button>
+            </button>
           </div>
-          {isLoading ? <p className="px-4 pb-2 text-xs text-slate-500">Loading sales report...</p> : null}
-          {errorMessage ? <p className="px-4 pb-2 text-xs text-amber-600">{errorMessage}</p> : null}
-          {!isLoading && !errorMessage && hasGenerated && filteredRows.length === 0 ? (
-            <p className="px-4 pb-2 text-xs text-slate-500">No report rows found for the selected filters.</p>
+          {isLoading ? (
+            <p className="daily-sales-reports__message">Loading sales report...</p>
           ) : null}
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>POF Number</TableHead>
-                <TableHead>GG Trans No.</TableHead>
-                <TableHead>Total Sales</TableHead>
-                <TableHead>Mode of Payment</TableHead>
-                <TableHead>Total Bottles</TableHead>
-                <TableHead>Total Blisters</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-slate-500">
-                    No report rows found for the selected filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.date}</TableCell>
-                    <TableCell>{row.pofNumber}</TableCell>
-                    <TableCell>{row.ggTransNo}</TableCell>
-                    <TableCell>{formatPesoShort(row.sales)}</TableCell>
-                    <TableCell>{row.paymentMode}</TableCell>
-                    <TableCell>{row.bottles}</TableCell>
-                    <TableCell>{row.blisters}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => setSelectedModifyRow(row)}>Trans No.</Button>
-                        <Button size="sm" variant="secondary" onClick={() => onPrintRow(row)}>Print</Button>
-                        <Button size="sm" variant="destructive" onClick={() => void onRemoveRow(row)}>Remove</Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={3}>Total:</TableCell>
-                <TableCell>{formatPesoShort(totals.totalSales)}</TableCell>
-                <TableCell />
-                <TableCell>{totals.totalBottles}</TableCell>
-                <TableCell>{totals.totalBlisters}</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </Card>
+          {errorMessage ? (
+            <p className="daily-sales-reports__message daily-sales-reports__message--error">
+              {errorMessage}
+            </p>
+          ) : null}
+          <div className="daily-sales-reports__table-wrap">
+            <Table className="daily-sales-reports__table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>POF Number</th>
+                  <th>GG Trans No.</th>
+                  <th>Total Sales</th>
+                  <th>Mode of Payment</th>
+                  <th>Total Bottles</th>
+                  <th>Total Blisters</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="daily-sales-reports__empty">
+                      {hasGenerated
+                        ? "No report rows found for the selected filters."
+                        : "Generate a report to load rows for the selected date range."}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.date}</td>
+                      <td>{row.pofNumber}</td>
+                      <td>{row.ggTransNo}</td>
+                      <td>{formatPesoShort(row.sales)}</td>
+                      <td>{formatPaymentModes(row.paymentMode, row.paymentModeTwo)}</td>
+                      <td>{row.bottles}</td>
+                      <td>{row.blisters}</td>
+                      <td>
+                        <div className="daily-sales-reports__row-actions">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => setSelectedModifyRow(row)}
+                          >
+                            Trans No.
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => onPrintRow(row)}>
+                            Print
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => void onRemoveRow(row)}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total:</td>
+                  <td />
+                  <td />
+                  <td>{formatPesoShort(totals.totalSales)}</td>
+                  <td />
+                  <td>{totals.totalBottles}</td>
+                  <td>{totals.totalBlisters}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </Table>
+          </div>
+        </div>
       </section>
 
       <DailySalesDialog isOpen={warningOpen} title="Warning!" onClose={() => setWarningOpen(false)}>

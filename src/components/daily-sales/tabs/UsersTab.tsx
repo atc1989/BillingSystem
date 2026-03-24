@@ -1,12 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DailySalesDialog } from "@/components/daily-sales/DailySalesDialog";
+import "@/components/daily-sales/DailySalesUsers.css";
 import {
   defaultCodePaymentOptions,
   defaultZeroOneOptions,
-  downloadCsv,
-  fieldClassName,
+  downloadExcel,
+  matchesSearch,
 } from "@/components/daily-sales/shared";
 import {
   fetchSalesDashboardUsers,
@@ -18,14 +17,6 @@ import {
   type UserAccountCodePayment,
   type UserAccountRow,
 } from "@/services/userAccount.service";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 type UsersGridRow = {
   id: string;
@@ -38,10 +29,6 @@ type UsersGridRow = {
 
 function normalizeCodePayment(value: string | null): UserAccountCodePayment {
   return value?.toUpperCase() === "PD" ? "PD" : "FS";
-}
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
 }
 
 function buildUsersRows(directoryUsers: SalesDashboardUser[], accountRows: UserAccountRow[]) {
@@ -101,7 +88,7 @@ export function UsersTab() {
     codePayment: "PD" as UserAccountCodePayment,
   });
 
-  const loadData = async () => {
+  const loadData = async ({ showAccountUnavailableNotice = true } = {}) => {
     setIsLoading(true);
     const [directoryResult, accountResult] = await Promise.allSettled([
       fetchSalesDashboardUsers(),
@@ -118,13 +105,20 @@ export function UsersTab() {
       setAccountRows(accountResult.value);
     } else {
       setAccountRows([]);
-      setNotice({
-        title: "Info",
-        message: "The user_account table is missing or inaccessible. Apply supabase/user_account.sql to create and backfill it.",
-      });
+      if (showAccountUnavailableNotice) {
+        setNotice({
+          title: "Info",
+          message:
+            "The user_account table is missing or inaccessible. Apply supabase/user_account.sql to create and backfill it.",
+        });
+      }
     }
 
     setIsLoading(false);
+    return {
+      usersLoaded: directoryResult.status === "fulfilled",
+      accountsLoaded: accountResult.status === "fulfilled",
+    };
   };
 
   useEffect(() => {
@@ -133,6 +127,10 @@ export function UsersTab() {
 
   const usersRows = useMemo(() => buildUsersRows(directoryUsers, accountRows), [accountRows, directoryUsers]);
   const zeroOneOptions = useMemo(() => getZeroOneOptions(directoryUsers, accountRows), [accountRows, directoryUsers]);
+  const usersWithNoZeroOneRows = useMemo(
+    () => usersRows.filter((row) => !row.zeroOne.trim()),
+    [usersRows],
+  );
 
   useEffect(() => {
     if (!formState.zeroOne && zeroOneOptions.length > 0) {
@@ -141,14 +139,12 @@ export function UsersTab() {
   }, [formState.zeroOne, zeroOneOptions]);
 
   const filteredUsersRows = useMemo(() => {
-    const search = usersSearchQuery.trim().toLowerCase();
-    if (!search) return usersRows;
-    return usersRows.filter((row) => matchesSearch([row.username, row.fullName, row.zeroOne, row.codePayment], search));
-  }, [usersRows, usersSearchQuery]);
+    return usersWithNoZeroOneRows.filter((row) =>
+      matchesSearch([row.username, row.fullName, row.zeroOne, row.codePayment], usersSearchQuery),
+    );
+  }, [usersSearchQuery, usersWithNoZeroOneRows]);
 
   const filteredAccountRows = useMemo(() => {
-    const search = userAccountSearchQuery.trim().toLowerCase();
-    if (!search) return accountRows;
     return accountRows.filter((row) =>
       matchesSearch(
         [
@@ -167,7 +163,7 @@ export function UsersTab() {
           row.dateCreated,
           row.dateUpdated,
         ],
-        search,
+        userAccountSearchQuery,
       ),
     );
   }, [accountRows, userAccountSearchQuery]);
@@ -200,98 +196,223 @@ export function UsersTab() {
     }
   };
 
+  const resetForm = () => {
+    setFormState({
+      username: "",
+      fullName: "",
+      zeroOne: zeroOneOptions[0] || "",
+      codePayment: "PD",
+    });
+  };
+
   return (
     <>
-      <section className="mt-4 space-y-4">
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm font-semibold text-slate-900">Users</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <form className="grid gap-3 md:grid-cols-5" onSubmit={onSave} onReset={(event) => {
+      <section className="daily-sales-users">
+        <div className="daily-sales-users__card">
+          <h2 className="daily-sales-users__title">Users</h2>
+          <form
+            className="daily-sales-users__form"
+            onSubmit={onSave}
+            onReset={(event) => {
               event.preventDefault();
-              setFormState({
-                username: "",
-                fullName: "",
-                zeroOne: zeroOneOptions[0] || "",
-                codePayment: "PD",
-              });
-            }}>
-              <label className="text-xs font-medium text-slate-700">Full Name<input value={formState.fullName} readOnly className={`${fieldClassName} bg-slate-50`} /></label>
-              <label className="text-xs font-medium text-slate-700">Zero One
-                <select value={formState.zeroOne} onChange={(event) => setFormState((current) => ({ ...current, zeroOne: event.target.value }))} className={fieldClassName}>
-                  {zeroOneOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </label>
-              <label className="text-xs font-medium text-slate-700">Code Payment
-                <select value={formState.codePayment} onChange={(event) => setFormState((current) => ({ ...current, codePayment: normalizeCodePayment(event.target.value) }))} className={fieldClassName}>
-                  {defaultCodePaymentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
-              </label>
-              <div className="flex items-end gap-2">
-                <Button type="submit">Save Entry</Button>
-                <Button type="reset" variant="secondary">Clear Form</Button>
-              </div>
-              <div className="flex items-end gap-2">
-                <Button type="button" variant="secondary" onClick={() => void loadData()}>Sync Users</Button>
-                <Button type="button" variant="secondary" onClick={() => void loadData()}>Sync Codes</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              resetForm();
+            }}
+          >
+            <div className="daily-sales-users__field daily-sales-users__field--wide">
+              <label className="daily-sales-users__label">Full Name</label>
+              <input
+                value={formState.fullName}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, fullName: event.target.value }))
+                }
+                placeholder="Enter full name"
+                className="daily-sales-users__input"
+              />
+            </div>
+            <div className="daily-sales-users__field">
+              <label className="daily-sales-users__label">Zero One</label>
+              <select
+                value={formState.zeroOne}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, zeroOne: event.target.value }))
+                }
+                className="daily-sales-users__input"
+              >
+                {zeroOneOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="daily-sales-users__field">
+              <label className="daily-sales-users__label">Code Payment</label>
+              <select
+                value={formState.codePayment}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    codePayment: normalizeCodePayment(event.target.value),
+                  }))
+                }
+                className="daily-sales-users__input"
+              >
+                {defaultCodePaymentOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="daily-sales-users__actions">
+              <button
+                type="submit"
+                className="daily-sales-users__button daily-sales-users__button--primary"
+              >
+                Save Entry
+              </button>
+              <button type="reset" className="daily-sales-users__button">
+                Clear Form
+              </button>
+              <button
+                type="button"
+                className="daily-sales-users__button"
+                onClick={async () => {
+                  const result = await loadData({ showAccountUnavailableNotice: false });
+                  setNotice(
+                    result.usersLoaded
+                      ? { title: "Success", message: "Users synced from the current source." }
+                      : { title: "Error", message: "Unable to sync users from the current source." },
+                  );
+                }}
+              >
+                Sync Users
+              </button>
+              <button
+                type="button"
+                className="daily-sales-users__button"
+                onClick={async () => {
+                  const result = await loadData({ showAccountUnavailableNotice: false });
+                  setNotice(
+                    result.accountsLoaded
+                      ? { title: "Success", message: "Code payment data refreshed." }
+                      : {
+                          title: "Error",
+                          message: "Unable to refresh code payment data from user accounts.",
+                        },
+                  );
+                }}
+              >
+                Sync Codes
+              </button>
+            </div>
+          </form>
+        </div>
 
-        <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">Users With No Zero One</h3>
-            <input value={usersSearchQuery} onChange={(event) => setUsersSearchQuery(event.target.value)} placeholder="Search table..." className="h-9 w-full max-w-xs rounded border border-slate-300 px-3 text-sm" />
+        <div className="daily-sales-users__card">
+          <div className="daily-sales-users__header">
+            <h3 className="daily-sales-users__header-title">Users With No Zero One</h3>
+            <div className="daily-sales-users__header-actions">
+              <input
+                value={usersSearchQuery}
+                onChange={(event) => setUsersSearchQuery(event.target.value)}
+                placeholder="Search table..."
+                className="daily-sales-users__input daily-sales-users__search"
+              />
+            </div>
           </div>
-          <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Zero One</TableHead>
-                <TableHead>Code Payment</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-slate-500">Loading users...</TableCell></TableRow>
-              ) : filteredUsersRows.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-slate-500">No user rows found.</TableCell></TableRow>
-              ) : (
-                filteredUsersRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.username}</TableCell>
-                    <TableCell>{row.fullName || "-"}</TableCell>
-                    <TableCell>{row.zeroOne || "-"}</TableCell>
-                    <TableCell>{row.codePayment || "-"}</TableCell>
-                    <TableCell>{row.createdAt ? new Date(row.createdAt).toLocaleString("en-PH") : "-"}</TableCell>
-                    <TableCell>
-                      <Button type="button" size="sm" variant="secondary" onClick={() => setFormState({ username: row.username, fullName: row.fullName, zeroOne: row.zeroOne || zeroOneOptions[0] || "", codePayment: row.codePayment || "PD" })}>
-                        Edit
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+          <div className="daily-sales-users__table-wrap">
+            <table className="daily-sales-users__table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Name</th>
+                  <th>Zero One</th>
+                  <th>Code Payment</th>
+                  <th>Created At</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="daily-sales-users__empty">
+                      Loading users...
+                    </td>
+                  </tr>
+                ) : filteredUsersRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="daily-sales-users__empty">
+                      {usersWithNoZeroOneRows.length === 0
+                        ? "All current users already have Zero One assignments."
+                        : "No user rows matched your search."}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsersRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.username}</td>
+                      <td>{row.fullName || "-"}</td>
+                      <td>{row.zeroOne || "-"}</td>
+                      <td>{row.codePayment || "-"}</td>
+                      <td>{row.createdAt ? new Date(row.createdAt).toLocaleString("en-PH") : "-"}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="daily-sales-users__button daily-sales-users__button--small"
+                          onClick={() =>
+                            setFormState({
+                              username: row.username,
+                              fullName: row.fullName,
+                              zeroOne: row.zeroOne || zeroOneOptions[0] || "",
+                              codePayment: row.codePayment || "PD",
+                            })
+                          }
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-        <Card className="gap-0 overflow-hidden border-slate-200 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
-            <h3 className="text-sm font-semibold text-slate-900">User Accounts</h3>
-            <div className="flex w-full max-w-xl items-center gap-2">
-              <input value={userAccountSearchQuery} onChange={(event) => setUserAccountSearchQuery(event.target.value)} placeholder="Search table..." className="h-9 flex-1 rounded border border-slate-300 px-3 text-sm" />
-              <Button
-                size="sm"
+        <div className="daily-sales-users__card">
+          <div className="daily-sales-users__header">
+            <h3 className="daily-sales-users__header-title">User Accounts</h3>
+            <div className="daily-sales-users__header-actions">
+              <input
+                value={userAccountSearchQuery}
+                onChange={(event) => setUserAccountSearchQuery(event.target.value)}
+                placeholder="Search table..."
+                className="daily-sales-users__input daily-sales-users__search"
+              />
+              <button
+                type="button"
+                className="daily-sales-users__button daily-sales-users__button--primary"
                 onClick={() =>
-                  downloadCsv(
-                    "daily-sales-user-accounts.csv",
-                    ["Full Name", "Username", "Sponsor", "Placement", "Group", "Account Type", "Zero One", "Code Payment", "City", "Province", "Region", "Country", "Date Created"],
+                  void downloadExcel(
+                    "daily-sales-user-accounts.xlsx",
+                    "User Accounts",
+                    [
+                      "Full Name",
+                      "Username",
+                      "Sponsor",
+                      "Placement",
+                      "Group",
+                      "Account Type",
+                      "Zero One",
+                      "Code Payment",
+                      "City",
+                      "Province",
+                      "Region",
+                      "Country",
+                      "Date Created",
+                      "Date Updated",
+                    ],
                     filteredAccountRows.map((row) => [
                       row.fullName,
                       row.username,
@@ -306,62 +427,79 @@ export function UsersTab() {
                       row.region,
                       row.country,
                       row.dateCreated,
+                      row.dateUpdated,
                     ]),
                   )
                 }
               >
-                Export CSV
-              </Button>
+                Excel
+              </button>
             </div>
           </div>
-          <Table className="min-w-[1400px]">
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead>Full Name</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Sponsor</TableHead>
-                <TableHead>Placement</TableHead>
-                <TableHead>Group</TableHead>
-                <TableHead>Account Type</TableHead>
-                <TableHead>Zero One</TableHead>
-                <TableHead>Code Payment</TableHead>
-                <TableHead>City</TableHead>
-                <TableHead>Province</TableHead>
-                <TableHead>Region</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Date Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={13} className="py-8 text-center text-slate-500">Loading user accounts...</TableCell></TableRow>
-              ) : filteredAccountRows.length === 0 ? (
-                <TableRow><TableCell colSpan={13} className="py-8 text-center text-slate-500">No user account rows found.</TableCell></TableRow>
-              ) : (
-                filteredAccountRows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.fullName}</TableCell>
-                    <TableCell>{row.username}</TableCell>
-                    <TableCell>{row.sponsor}</TableCell>
-                    <TableCell>{row.placement}</TableCell>
-                    <TableCell>{row.group}</TableCell>
-                    <TableCell>{row.accountType}</TableCell>
-                    <TableCell>{row.zeroOne}</TableCell>
-                    <TableCell>{row.codePayment}</TableCell>
-                    <TableCell>{row.city}</TableCell>
-                    <TableCell>{row.province}</TableCell>
-                    <TableCell>{row.region}</TableCell>
-                    <TableCell>{row.country}</TableCell>
-                    <TableCell>{row.dateCreated ? new Date(row.dateCreated).toLocaleString("en-PH") : "-"}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </Card>
+          <div className="daily-sales-users__table-wrap">
+            <table className="daily-sales-users__table daily-sales-users__table--wide">
+              <thead>
+                <tr>
+                  <th>Full Name</th>
+                  <th>Username</th>
+                  <th>Sponsor</th>
+                  <th>Placement</th>
+                  <th>Group</th>
+                  <th>Account Type</th>
+                  <th>Zero One</th>
+                  <th>Code Payment</th>
+                  <th>Barangay</th>
+                  <th>City</th>
+                  <th>Province</th>
+                  <th>Region</th>
+                  <th>Country</th>
+                  <th>Date Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={14} className="daily-sales-users__empty">
+                      Loading user accounts...
+                    </td>
+                  </tr>
+                ) : filteredAccountRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={14} className="daily-sales-users__empty">
+                      No user account rows found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAccountRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.fullName}</td>
+                      <td>{row.username}</td>
+                      <td>{row.sponsor}</td>
+                      <td>{row.placement}</td>
+                      <td>{row.group}</td>
+                      <td>{row.accountType}</td>
+                      <td>{row.zeroOne}</td>
+                      <td>{row.codePayment}</td>
+                      <td>-</td>
+                      <td>{row.city}</td>
+                      <td>{row.province}</td>
+                      <td>{row.region}</td>
+                      <td>{row.country}</td>
+                      <td>{row.dateCreated ? new Date(row.dateCreated).toLocaleString("en-PH") : "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
-      <DailySalesDialog isOpen={Boolean(notice)} title={notice?.title ?? "Notice"} onClose={() => setNotice(null)}>
+      <DailySalesDialog
+        isOpen={Boolean(notice)}
+        title={notice?.title ?? "Notice"}
+        onClose={() => setNotice(null)}
+      >
         {notice?.message ?? ""}
       </DailySalesDialog>
     </>

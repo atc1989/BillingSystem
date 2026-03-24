@@ -9,183 +9,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  downloadCsv,
+  downloadExcel,
+  formatPaymentModes,
   formatCurrency,
+  getLocalDateIso,
+  isDateWithinRange,
+  matchesSearch,
   paymentModes,
 } from "@/components/daily-sales/shared";
 import { listDailySalesEntries } from "@/services/dailySales.service";
 import type { DailySalesRecord, PaymentMode } from "@/types/dailySales";
 
-const filterLabelClassName =
-  "text-xs font-medium uppercase tracking-wide text-slate-700";
-const filterFieldClassName =
-  "h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition-colors focus:border-slate-400";
-
-const fallbackRows: DailySalesRecord[] = [
-  {
-    id: "fallback-1",
-    dailySalesId: "fallback-1",
-    pofNumber: "POF-040325-001",
-    ggTransNo: "HeadEagle01",
-    date: "2025-04-03",
-    memberName: "Airyne Dytes Obalag",
-    zeroOne: "HeadEagle01",
-    memberType: "DISTRIBUTOR",
-    packageType: "SILVER",
-    quantity: 1,
-    bottles: 1,
-    blisters: 0,
-    sales: 3500,
-    paymentMode: "CASH",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 3500,
-    discount: 0,
-    discountedPrice: 3500,
-    releasedBottle: 1,
-    releasedBlister: 0,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-2",
-    dailySalesId: "fallback-2",
-    pofNumber: "POF-040425-002",
-    ggTransNo: "HERA01",
-    date: "2025-04-04",
-    memberName: "Jane Cruz",
-    zeroOne: "HERA01",
-    memberType: "DISTRIBUTOR",
-    packageType: "GOLD",
-    quantity: 1,
-    bottles: 3,
-    blisters: 0,
-    sales: 10500,
-    paymentMode: "BANK",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 10500,
-    discount: 0,
-    discountedPrice: 10500,
-    releasedBottle: 3,
-    releasedBlister: 0,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-3",
-    dailySalesId: "fallback-3",
-    pofNumber: "POF-040525-003",
-    ggTransNo: "Romar01",
-    date: "2025-04-05",
-    memberName: "Mark Villanueva",
-    zeroOne: "Romar01",
-    memberType: "DISTRIBUTOR",
-    packageType: "RETAIL",
-    quantity: 2,
-    bottles: 2,
-    blisters: 0,
-    sales: 7000,
-    paymentMode: "EWALLET",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "To Follow",
-    newMember: false,
-    originalPrice: 7000,
-    discount: 0,
-    discountedPrice: 7000,
-    releasedBottle: 1,
-    releasedBlister: 0,
-    balanceBottle: 1,
-    balanceBlister: 0,
-    isToBlister: false,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-  {
-    id: "fallback-4",
-    dailySalesId: "fallback-4",
-    pofNumber: "POF-040625-004",
-    ggTransNo: "Ironman",
-    date: "2025-04-06",
-    memberName: "Leah Santos",
-    zeroOne: "Ironman",
-    memberType: "DISTRIBUTOR",
-    packageType: "BLISTER",
-    quantity: 8,
-    bottles: 0,
-    blisters: 8,
-    sales: 3200,
-    paymentMode: "MAYA(ATC)",
-    paymentType: "",
-    referenceNo: "",
-    paymentModeTwo: "N/A",
-    paymentTypeTwo: "",
-    referenceNoTwo: "",
-    salesTwo: 0,
-    status: "Released",
-    newMember: false,
-    originalPrice: 3200,
-    discount: 0,
-    discountedPrice: 3200,
-    releasedBottle: 0,
-    releasedBlister: 8,
-    balanceBottle: 0,
-    balanceBlister: 0,
-    isToBlister: true,
-    remarks: "",
-    receivedBy: "",
-    collectedBy: "",
-    savedAt: "",
-    source: "local",
-  },
-];
-
-const fallbackSummary = {
-  totalSales: 24200,
-  totalOrders: 4,
-  totalNewMembers: 0,
-  totalBottles: 6,
-  totalBlisters: 8,
-};
-
-function matchesSearch(values: Array<string | number>, search: string) {
-  return values.join(" ").toLowerCase().includes(search);
-}
-
 export function DashboardTab({ refreshTick }: { refreshTick: number }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateIso();
   const [rows, setRows] = useState<DailySalesRecord[]>([]);
   const [pendingFromDate, setPendingFromDate] = useState(today);
   const [pendingToDate, setPendingToDate] = useState(today);
@@ -224,25 +60,24 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
     };
 
     void loadRows();
+
     return () => {
       isMounted = false;
     };
   }, [refreshTick]);
 
   const filteredRows = useMemo(() => {
-    const search = searchQuery.trim().toLowerCase();
-
     return rows.filter((row) => {
-      if (row.date < fromDate || row.date > toDate) {
+      if (!isDateWithinRange(row.date, fromDate, toDate)) {
         return false;
       }
 
-      if (paymentMode !== "ALL" && row.paymentMode !== paymentMode) {
+      if (
+        paymentMode !== "ALL" &&
+        row.paymentMode !== paymentMode &&
+        row.paymentModeTwo !== paymentMode
+      ) {
         return false;
-      }
-
-      if (!search) {
-        return true;
       }
 
       return matchesSearch(
@@ -250,20 +85,17 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
           row.pofNumber,
           row.memberName,
           row.ggTransNo,
-          row.paymentMode,
+          formatPaymentModes(row.paymentMode, row.paymentModeTwo),
           row.packageType,
           row.sales,
           row.zeroOne,
         ],
-        search,
+        searchQuery,
       );
     });
   }, [fromDate, paymentMode, rows, searchQuery, toDate]);
 
-  const hasRealRows = rows.length > 0;
-  const displayRows = hasRealRows ? filteredRows : fallbackRows;
-
-  const computedSummary = {
+  const summary = {
     totalSales: filteredRows.reduce((sum, row) => sum + row.sales, 0),
     totalOrders: filteredRows.length,
     totalNewMembers: filteredRows.filter((row) => row.newMember).length,
@@ -271,116 +103,121 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
     totalBlisters: filteredRows.reduce((sum, row) => sum + row.blisters, 0),
   };
 
-  const activeSummary = hasRealRows ? computedSummary : fallbackSummary;
-
   const summaryItems = [
-    { label: "Total Sales", value: formatCurrency(activeSummary.totalSales) },
-    { label: "Total Orders", value: activeSummary.totalOrders.toLocaleString() },
-    { label: "New Members", value: activeSummary.totalNewMembers.toLocaleString() },
+    { label: "Total Sales", value: formatCurrency(summary.totalSales) },
+    { label: "Total Orders", value: summary.totalOrders.toLocaleString() },
+    { label: "New Members", value: summary.totalNewMembers.toLocaleString() },
     {
       label: "Total Bottles Sold",
-      value: activeSummary.totalBottles.toLocaleString(),
+      value: summary.totalBottles.toLocaleString(),
     },
     {
       label: "Total Blister Sold",
-      value: activeSummary.totalBlisters.toLocaleString(),
+      value: summary.totalBlisters.toLocaleString(),
     },
   ];
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-xl border border-slate-200 bg-white px-6 py-6 shadow-sm">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex flex-col gap-5 md:flex-row md:flex-wrap md:items-start md:gap-3 xl:flex-nowrap xl:gap-3">
-            <div className="flex min-w-[220px] flex-col gap-2">
-              <div className={filterLabelClassName}>FROM</div>
-              <input
-                type="date"
-                value={pendingFromDate}
-                onChange={(event) => setPendingFromDate(event.target.value)}
-                className={filterFieldClassName}
-              />
-            </div>
-
-            <div className="flex min-w-[220px] flex-col gap-2">
-              <div className={filterLabelClassName}>TO</div>
-              <input
-                type="date"
-                value={pendingToDate}
-                onChange={(event) => setPendingToDate(event.target.value)}
-                className={filterFieldClassName}
-              />
-            </div>
-
-            <div className="flex min-w-[230px] flex-col gap-2">
-              <div className={filterLabelClassName}>MODE OF PAYMENT</div>
-              <select
-                value={pendingPaymentMode}
-                onChange={(event) =>
-                  setPendingPaymentMode(event.target.value as PaymentMode)
-                }
-                className={filterFieldClassName}
-              >
-                {paymentModes.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {mode}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-end pt-[26px]">
-              <Button
-                variant="outline"
-                className="h-10 rounded-md border-slate-300 bg-white px-5 text-sm font-medium text-slate-900 hover:bg-slate-50"
-                onClick={() => {
-                  setFromDate(pendingFromDate);
-                  setToDate(pendingToDate);
-                  setPaymentMode(pendingPaymentMode);
-                }}
-              >
-                Apply
-              </Button>
-            </div>
+    <section className="daily-sales-dashboard">
+      <div className="daily-sales-dashboard__card daily-sales-dashboard__filter-card">
+        <div className="daily-sales-dashboard__filters">
+          <div className="daily-sales-dashboard__filter">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-from-date">
+              From
+            </label>
+            <input
+              id="dashboard-from-date"
+              type="date"
+              value={pendingFromDate}
+              onChange={(event) => setPendingFromDate(event.target.value)}
+              className="daily-sales-dashboard__field"
+            />
           </div>
 
-          <div className="xl:ml-8 xl:flex xl:min-w-[250px] xl:justify-end">
-            <div className="flex min-w-[250px] flex-col gap-2">
-              <div className={filterLabelClassName}>SEARCH</div>
-              <input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search table..."
-                className={filterFieldClassName}
-              />
-            </div>
+          <div className="daily-sales-dashboard__filter">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-to-date">
+              To
+            </label>
+            <input
+              id="dashboard-to-date"
+              type="date"
+              value={pendingToDate}
+              onChange={(event) => setPendingToDate(event.target.value)}
+              className="daily-sales-dashboard__field"
+            />
+          </div>
+
+          <div className="daily-sales-dashboard__filter">
+            <label
+              className="daily-sales-dashboard__label"
+              htmlFor="dashboard-payment-mode"
+            >
+              Mode of Payment
+            </label>
+            <select
+              id="dashboard-payment-mode"
+              value={pendingPaymentMode}
+              onChange={(event) =>
+                setPendingPaymentMode(event.target.value as PaymentMode)
+              }
+              className="daily-sales-dashboard__field"
+            >
+              {paymentModes.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="daily-sales-dashboard__button-wrap">
+            <Button
+              variant="outline"
+              className="daily-sales-dashboard__apply"
+              onClick={() => {
+                setFromDate(pendingFromDate);
+                setToDate(pendingToDate);
+                setPaymentMode(pendingPaymentMode);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+
+          <div className="daily-sales-dashboard__filter daily-sales-dashboard__search">
+            <label className="daily-sales-dashboard__label" htmlFor="dashboard-search">
+              Search
+            </label>
+            <input
+              id="dashboard-search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search recent sales..."
+              className="daily-sales-dashboard__field"
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+      <div className="daily-sales-dashboard__summary-grid">
         {summaryItems.map((item) => (
-          <div
-            key={item.label}
-            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-          >
-            <p className="text-[10px] font-medium text-slate-500">{item.label}</p>
-            <p className="mt-2 text-[17px] font-semibold leading-none text-slate-950">
-              {item.value}
-            </p>
+          <div key={item.label} className="daily-sales-dashboard__summary-card">
+            <p className="daily-sales-dashboard__summary-label">{item.label}</p>
+            <p className="daily-sales-dashboard__summary-value">{item.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between px-6 py-5">
-          <h2 className="text-sm font-medium text-slate-900">Recent Sales</h2>
+      <div className="daily-sales-dashboard__card daily-sales-dashboard__table-card">
+        <div className="daily-sales-dashboard__table-header">
+          <h2 className="daily-sales-dashboard__title">Recent Sales</h2>
           <Button
             size="sm"
-            className="h-8 rounded-md bg-slate-950 px-3 text-xs font-medium text-white hover:bg-slate-900"
+            className="daily-sales-dashboard__export"
             onClick={() =>
-              downloadCsv(
-                "daily-sales-dashboard.csv",
+              void downloadExcel(
+                "daily-sales-dashboard.xlsx",
+                "Dashboard",
                 [
                   "POF Number",
                   "Date",
@@ -393,7 +230,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   "Mode of Payment",
                   "Status",
                 ],
-                displayRows.map((row) => [
+                filteredRows.map((row) => [
                   row.pofNumber,
                   row.date,
                   row.memberName,
@@ -402,7 +239,7 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
                   row.bottles,
                   row.blisters,
                   row.sales,
-                  row.paymentMode,
+                  formatPaymentModes(row.paymentMode, row.paymentModeTwo),
                   row.status,
                 ]),
               )
@@ -413,92 +250,56 @@ export function DashboardTab({ refreshTick }: { refreshTick: number }) {
         </div>
 
         {isLoading ? (
-          <p className="px-6 pb-2 text-xs text-slate-500">Loading daily sales...</p>
+          <p className="daily-sales-dashboard__message">Loading daily sales...</p>
         ) : null}
         {errorMessage ? (
-          <p className="px-6 pb-2 text-xs text-amber-600">{errorMessage}</p>
+          <p className="daily-sales-dashboard__message daily-sales-dashboard__message--error">
+            {errorMessage}
+          </p>
         ) : null}
 
-        <Table className="min-w-[1080px] text-xs">
-          <TableHeader className="bg-slate-50">
-            <TableRow className="border-b border-slate-200 hover:bg-slate-50">
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                POF NUMBER
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                DATE
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                MEMBER NAME
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                ZERO ONE
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                PACKAGE
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                BOTTLES
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                BLISTERS
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                SALES
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                MODE OF PAYMENT
-              </TableHead>
-              <TableHead className="h-10 px-5 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-600">
-                STATUS
-              </TableHead>
+        <Table className="daily-sales-dashboard__table">
+          <TableHeader>
+            <TableRow>
+              <TableHead>POF NUMBER</TableHead>
+              <TableHead>DATE</TableHead>
+              <TableHead>MEMBER NAME</TableHead>
+              <TableHead>ZERO ONE</TableHead>
+              <TableHead>PACKAGE</TableHead>
+              <TableHead>BOTTLES</TableHead>
+              <TableHead>BLISTERS</TableHead>
+              <TableHead>SALES</TableHead>
+              <TableHead>MODE OF PAYMENT</TableHead>
+              <TableHead>STATUS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {hasRealRows && filteredRows.length === 0 ? (
-              <TableRow className="hover:bg-white">
-                <TableCell
-                  colSpan={10}
-                  className="px-5 py-10 text-center text-sm text-slate-500"
-                >
-                  No recent sales found for the selected filters.
+            {filteredRows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} className="daily-sales-dashboard__empty">
+                  {rows.length === 0 && !isLoading
+                    ? "No recent sales are available yet."
+                    : "No recent sales found for the selected filters."}
                 </TableCell>
               </TableRow>
             ) : (
-              displayRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="border-b border-slate-200 bg-white hover:bg-slate-50/50"
-                >
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
+              filteredRows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="daily-sales-dashboard__cell-primary">
                     {row.pofNumber}
                   </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.date}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.memberName}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.zeroOne}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.packageType}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.bottles}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.blisters}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
+                  <TableCell>{row.date}</TableCell>
+                  <TableCell>{row.memberName}</TableCell>
+                  <TableCell>{row.zeroOne}</TableCell>
+                  <TableCell>{row.packageType}</TableCell>
+                  <TableCell>{row.bottles}</TableCell>
+                  <TableCell>{row.blisters}</TableCell>
+                  <TableCell className="daily-sales-dashboard__cell-sales">
                     {formatCurrency(row.sales)}
                   </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.paymentMode}
-                  </TableCell>
-                  <TableCell className="px-5 py-3 text-xs text-slate-900">
-                    {row.status}
+                  <TableCell>{formatPaymentModes(row.paymentMode, row.paymentModeTwo)}</TableCell>
+                  <TableCell>
+                    <span className="daily-sales-dashboard__status">{row.status}</span>
                   </TableCell>
                 </TableRow>
               ))

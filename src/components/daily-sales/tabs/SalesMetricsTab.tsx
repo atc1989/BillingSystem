@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { AgentCardGrid, AgentDetailsDialog, SummaryCardGrid } from "@/components/daily-sales/MetricsComponents";
+import { AgentDetailsDialog } from "@/components/daily-sales/MetricsComponents";
+import "@/components/daily-sales/DailySalesMetrics.css";
+import { getLocalDateIso, normalizeDateRange } from "@/components/daily-sales/shared";
 import { loadSalesMetricsDataset } from "@/services/dailySales.service";
-import type { AgentPerformance, SalesDataset, TimeRange } from "@/types/dailySales";
+import type {
+  AgentPerformance,
+  SalesDataset,
+  TimeRange,
+} from "@/types/dailySales";
 
 const emptyDataset: SalesDataset = {
   label: "Sales API Dataset",
@@ -11,25 +15,47 @@ const emptyDataset: SalesDataset = {
   agents: [],
 };
 
-const toIsoDate = (date: Date) => date.toISOString().slice(0, 10);
+function getAgentInitials(name: string) {
+  const parts = name
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-function resolveDateRange(range: TimeRange, customStartDate: string, customEndDate: string) {
+  if (parts.length === 0) {
+    return "--";
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function resolveDateRange(
+  range: TimeRange,
+  customStartDate: string,
+  customEndDate: string,
+): { dateFrom: string; dateTo: string } {
   const today = new Date();
-  const dateTo = toIsoDate(today);
+  const dateTo = getLocalDateIso(today);
 
   if (range === "custom" && customStartDate && customEndDate) {
-    return { dateFrom: customStartDate, dateTo: customEndDate };
+    const normalized = normalizeDateRange(customStartDate, customEndDate);
+    return {
+      dateFrom: normalized.from,
+      dateTo: normalized.to,
+    };
   }
 
   if (range === "weekly") {
     const start = new Date(today);
     start.setDate(today.getDate() - 6);
-    return { dateFrom: toIsoDate(start), dateTo };
+    return { dateFrom: getLocalDateIso(start), dateTo };
   }
 
   if (range === "monthly") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    return { dateFrom: toIsoDate(start), dateTo };
+    return { dateFrom: getLocalDateIso(start), dateTo };
   }
 
   return { dateFrom: dateTo, dateTo };
@@ -78,7 +104,10 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
   }, [dateFrom, dateTo, refreshTick]);
 
   const rankedAgentStats = useMemo(
-    () => [...dataset.agents].sort((left, right) => right.conversionRate - left.conversionRate || right.sales - left.sales),
+    () =>
+      [...dataset.agents].sort(
+        (left, right) => right.sales - left.sales || right.conversionRate - left.conversionRate,
+      ),
     [dataset.agents],
   );
 
@@ -86,46 +115,216 @@ export function SalesMetricsTab({ refreshTick }: { refreshTick: number }) {
     ? rankedAgentStats.findIndex((agent) => agent.id === selectedAgent.id) + 1
     : null;
 
+  const summaryCards = dataset.summary;
+  const displayAgents = useMemo(
+    () =>
+      rankedAgentStats.map((agent, index) => ({
+        ...agent,
+        rank: index + 1,
+        initials: getAgentInitials(agent.name),
+      })),
+    [rankedAgentStats],
+  );
+
   return (
     <>
-      <section className="mt-4 space-y-4">
-        <Card className="gap-0 border-slate-200 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">Sales Metrics</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant={range === "daily" ? "default" : "secondary"} onClick={() => setRange("daily")}>Daily</Button>
-                <Button size="sm" variant={range === "weekly" ? "default" : "secondary"} onClick={() => setRange("weekly")}>Weekly</Button>
-                <Button size="sm" variant={range === "monthly" ? "default" : "secondary"} onClick={() => setRange("monthly")}>Monthly</Button>
-                <Button size="sm" variant={range === "custom" ? "default" : "secondary"} onClick={() => setRange("custom")}>Custom</Button>
-                <div className="h-9 overflow-hidden">
-                  <div className={`flex h-9 items-center gap-2 transition-all ${range === "custom" ? "opacity-100" : "pointer-events-none opacity-0"}`}>
-                    <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} className="h-9 rounded border border-slate-300 px-3 text-sm" />
-                    <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="h-9 rounded border border-slate-300 px-3 text-sm" />
-                    <Button size="sm" variant="secondary" onClick={() => {
-                      setAppliedCustomStartDate(customStartDate);
-                      setAppliedCustomEndDate(customEndDate);
-                    }}>
-                      Apply
-                    </Button>
-                  </div>
+      <section className="daily-sales-metrics">
+        <div className="daily-sales-metrics__header-card">
+          <div className="daily-sales-metrics__header-row">
+            <h2 className="daily-sales-metrics__title">Sales Metrics</h2>
+            <div className="daily-sales-metrics__tabs">
+              <button
+                type="button"
+                className={`daily-sales-metrics__tab ${
+                  range === "daily" ? "daily-sales-metrics__tab--active" : ""
+                }`}
+                onClick={() => setRange("daily")}
+              >
+                Daily
+              </button>
+              <button
+                type="button"
+                className={`daily-sales-metrics__tab ${
+                  range === "weekly" ? "daily-sales-metrics__tab--active" : ""
+                }`}
+                onClick={() => setRange("weekly")}
+              >
+                Weekly
+              </button>
+              <button
+                type="button"
+                className={`daily-sales-metrics__tab ${
+                  range === "monthly" ? "daily-sales-metrics__tab--active" : ""
+                }`}
+                onClick={() => setRange("monthly")}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                className={`daily-sales-metrics__tab ${
+                  range === "custom" ? "daily-sales-metrics__tab--active" : ""
+                }`}
+                onClick={() => setRange("custom")}
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          {range === "custom" ? (
+            <div className="daily-sales-metrics__custom-row">
+              <div className="daily-sales-metrics__custom-fields">
+                <div className="daily-sales-metrics__custom-field">
+                  <label className="daily-sales-metrics__custom-label">Start Date</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(event) => setCustomStartDate(event.target.value)}
+                    className="daily-sales-metrics__custom-input"
+                  />
+                </div>
+                <div className="daily-sales-metrics__custom-field">
+                  <label className="daily-sales-metrics__custom-label">End Date</label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(event) => setCustomEndDate(event.target.value)}
+                    className="daily-sales-metrics__custom-input"
+                  />
+                </div>
+                <div className="daily-sales-metrics__custom-field">
+                  <label className="daily-sales-metrics__custom-label">&nbsp;</label>
+                  <button
+                    type="button"
+                    className="daily-sales-metrics__apply"
+                    disabled={!customStartDate || !customEndDate}
+                    onClick={() => {
+                      const nextRange = normalizeDateRange(customStartDate, customEndDate);
+                      setAppliedCustomStartDate(nextRange.from);
+                      setAppliedCustomEndDate(nextRange.to);
+                    }}
+                  >
+                    Apply
+                  </button>
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          ) : null}
 
-        {isLoading ? <p className="text-sm text-slate-500">Loading latest sales performance...</p> : null}
-        {errorMessage ? <p className="text-sm text-amber-600">{errorMessage}</p> : null}
-        {!isLoading && !errorMessage && dataset.agents.length === 0 ? (
-          <p className="text-sm text-slate-500">No metrics for selected range.</p>
-        ) : null}
+          {isLoading ? (
+            <p className="daily-sales-metrics__notice">Loading latest sales performance...</p>
+          ) : null}
+          {errorMessage ? (
+            <p className="daily-sales-metrics__notice daily-sales-metrics__notice--error">
+              {errorMessage}
+            </p>
+          ) : null}
+        </div>
 
-        <SummaryCardGrid stats={dataset.summary} />
-        <AgentCardGrid agents={dataset.agents} onAgentSelect={setSelectedAgent} />
+        <div className="daily-sales-metrics__kpi-grid">
+          {summaryCards.map((card) => (
+            <article key={card.id} className="daily-sales-metrics__kpi-card">
+              <div className="daily-sales-metrics__kpi-top">
+                <span className="daily-sales-metrics__kpi-label">{card.label}</span>
+                <span
+                  className={`daily-sales-metrics__badge daily-sales-metrics__badge--${card.trend}`}
+                >
+                  {card.trend}
+                </span>
+              </div>
+              <div className="daily-sales-metrics__kpi-value">{card.value}</div>
+            </article>
+          ))}
+        </div>
+
+        <div className="daily-sales-metrics__section">
+          <div className="daily-sales-metrics__section-header">
+            <h3 className="daily-sales-metrics__section-title">Team Performance</h3>
+            <span className="daily-sales-metrics__section-subtitle">
+              Ranked by conversion and sales
+            </span>
+          </div>
+          <div className="daily-sales-metrics__team-grid">
+            {displayAgents.length === 0 ? (
+              <div className="daily-sales-metrics__team-card daily-sales-metrics__team-card--idle">
+                <div className="daily-sales-metrics__team-header">
+                  <div className="daily-sales-metrics__identity">
+                    <div className="daily-sales-metrics__name">
+                      No team data for the selected period
+                    </div>
+                  </div>
+                </div>
+                <div className="daily-sales-metrics__team-body">
+                  <div className="daily-sales-metrics__detail">
+                    <span>Try a different date range or load sales activity first.</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {displayAgents.map((agent) => {
+              const cardClassName = `daily-sales-metrics__team-card daily-sales-metrics__team-card--${agent.status} daily-sales-metrics__team-trigger`;
+
+              return (
+                <button
+                  key={agent.id}
+                  type="button"
+                  className={cardClassName}
+                  onClick={() => setSelectedAgent(agent)}
+                >
+                  <div className="daily-sales-metrics__team-header">
+                    <div className="daily-sales-metrics__team-meta">
+                      <span className="daily-sales-metrics__rank">#{agent.rank}</span>
+                      <div className="daily-sales-metrics__avatar">{agent.initials}</div>
+                      <div className="daily-sales-metrics__identity">
+                        <div className="daily-sales-metrics__name">{agent.name}</div>
+                      </div>
+                    </div>
+                    <span
+                      className={`daily-sales-metrics__status daily-sales-metrics__status--${agent.status}`}
+                    >
+                      {agent.status}
+                    </span>
+                  </div>
+                  <div className="daily-sales-metrics__team-body">
+                    <div className="daily-sales-metrics__performance">
+                      {agent.conversionRate}%
+                    </div>
+                    <div className="daily-sales-metrics__detail">
+                      <span>Sales</span>
+                      <strong>
+                        {agent.sales.toLocaleString("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}
+                      </strong>
+                    </div>
+                    <div className="daily-sales-metrics__detail">
+                      <span>Target</span>
+                      <strong>
+                        {agent.target.toLocaleString("en-PH", {
+                          style: "currency",
+                          currency: "PHP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}
+                      </strong>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
-      <AgentDetailsDialog agent={selectedAgent} rank={selectedAgentRank} onClose={() => setSelectedAgent(null)} />
+      <AgentDetailsDialog
+        agent={selectedAgent}
+        rank={selectedAgentRank}
+        onClose={() => setSelectedAgent(null)}
+      />
     </>
   );
 }
