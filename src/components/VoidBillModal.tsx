@@ -136,7 +136,7 @@ export function VoidBillModal({
           <div className="flex items-start gap-2 text-xs text-gray-600">
             <AlertTriangle className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
             <p>
-              Voided requests are retained for audit history but cannot be edited or paid.
+              Voided requests are retained for audit history and can no longer be paid.
             </p>
           </div>
         </div>

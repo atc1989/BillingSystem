@@ -251,6 +251,8 @@ export function ViewBillPage() {
     setIsVoidModalOpen(true);
   };
 
+  const canEditBill = bill?.status !== "paid";
+
   const handleConfirmVoid = async (_reason: string) => {
     if (!bill) return;
     if (isUpdatingStatus) return;
@@ -465,7 +467,8 @@ export function ViewBillPage() {
               )}
               <button
                 onClick={handleEdit}
-                className="px-4 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition-colors font-medium flex items-center gap-2"
+                disabled={!canEditBill}
+                className="px-4 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
               >
                 <Edit2 className="w-4 h-4" />
                 Edit

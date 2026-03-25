@@ -64,8 +64,7 @@ export function EditBillPage() {
         return "Other";
     }
   };
-  const canEdit =
-    billStatus === "draft" || billStatus === "awaiting_approval" || billStatus === "rejected";
+  const canEdit = billStatus !== null && billStatus !== "paid";
   const isDuplicatePrfError = (error: string | ServiceError | null | undefined) =>
     typeof error === "object" && error?.code === "DUPLICATE_PRF";
   useEffect(() => {
@@ -267,7 +266,7 @@ export function EditBillPage() {
   const handleSaveChanges = async () => {
     if (!id) return;
     if (!canEdit) {
-      setErrorMessage("This bill can no longer be edited.");
+      setErrorMessage("Paid bills can no longer be edited.");
       return;
     }
     setReferenceError(null);
@@ -432,7 +431,7 @@ export function EditBillPage() {
           </div>
           {!canEdit && (
             <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
-              This bill is {formatStatus(billStatus)} and can no longer be edited.
+              This bill is {formatStatus(billStatus)} and can no longer be edited because it is paid.
             </div>
           )}
           {errorMessage && (
