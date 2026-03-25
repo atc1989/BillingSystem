@@ -33,7 +33,13 @@ function isMissingBillBreakdownsCategoryError(error: PostgrestError | null | und
     .toLowerCase();
 
   return (
+    error.code === "42703" ||
+    error.code === "PGRST204" ||
     joined.includes("bill_breakdowns.category") ||
+    joined.includes("breakdowns(category)") ||
+    joined.includes("could not find the 'category' column") ||
+    joined.includes("could not find the 'category'") ||
+    joined.includes("column category does not exist") ||
     (joined.includes("bill_breakdowns") && joined.includes("category") && joined.includes("does not exist"))
   );
 }
