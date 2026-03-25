@@ -480,6 +480,18 @@ export interface UpdateBillPayload {
 }
 
 export async function updateBill(id: string, payload: UpdateBillPayload) {
+  const { data: existingBreakdowns, error: existingBreakdownsError } = await supabase
+    .from("bill_breakdowns")
+    .select(BILL_BREAKDOWN_BASE_SELECT)
+    .eq("bill_id", id);
+
+  if (existingBreakdownsError) {
+    return {
+      data: null as Bill | null,
+      error: mapDbError(existingBreakdownsError, "Failed to load current breakdown lines.")
+    };
+  }
+
   const normalizedBill = {
     ...payload.bill,
     total_amount: roundMoney(payload.bill.total_amount)
@@ -530,6 +542,9 @@ export async function updateBill(id: string, payload: UpdateBillPayload) {
   if (payload.breakdowns.length > 0) {
     const breakdownResult = await insertBillBreakdowns(id, payload.breakdowns);
     if (breakdownResult.error) {
+      if ((existingBreakdowns ?? []).length > 0) {
+        await supabase.from("bill_breakdowns").insert(existingBreakdowns);
+      }
       return { data: updated as Bill, error: breakdownResult.error };
     }
   }

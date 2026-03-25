@@ -102,18 +102,31 @@ export function EditBillPage() {
         setAttachments(existingAttachments);
         setAttachmentsToDelete([]);
         setNewFiles([]);
-        setBreakdowns(
-          lineItems.map((b, idx) => ({
-            id: b.id || idx.toString(),
-            payment_method: (b.payment_method ?? bill.payment_method ?? "other") as PaymentMethod,
-            category: b.category || "",
-            description: b.description || "",
-            amount: String(b.amount ?? ""),
-            bank_name: b.bank_name || "",
-            bank_account_name: b.bank_account_name || "",
-            bank_account_no: b.bank_account_no || ""
-          }))
-        );
+        const nextBreakdowns =
+          lineItems.length > 0
+            ? lineItems.map((b, idx) => ({
+                id: b.id || idx.toString(),
+                payment_method: (b.payment_method ?? bill.payment_method ?? "other") as PaymentMethod,
+                category: b.category || "",
+                description: b.description || "",
+                amount: String(b.amount ?? ""),
+                bank_name: b.bank_name || "",
+                bank_account_name: b.bank_account_name || "",
+                bank_account_no: b.bank_account_no || ""
+              }))
+            : [
+                {
+                  id: "recovered-breakdown",
+                  payment_method: (bill.payment_method ?? "other") as PaymentMethod,
+                  category: "",
+                  description: "",
+                  amount: String(bill.total_amount ?? ""),
+                  bank_name: bill.bank_name || "",
+                  bank_account_name: bill.bank_account_name || "",
+                  bank_account_no: bill.bank_account_no || ""
+                }
+              ];
+        setBreakdowns(nextBreakdowns);
       })
       .catch((error) => {
         if (!isMounted) return;
